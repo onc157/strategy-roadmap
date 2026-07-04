@@ -65,11 +65,14 @@
   .g-task:hover{background:#1c2434}
   .g-task.crit{box-shadow:inset 3px 0 0 var(--crit)}
   .g-task>div{padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .g-name{flex:1;min-width:0}
+  .g-name{flex:1;min-width:0;display:flex;align-items:center}
+  .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .g-meta{width:120px;color:var(--muted);font-size:11px}
   .g-start{width:80px;color:var(--muted);font-size:11px}
   .g-dur{width:44px;text-align:right;color:var(--muted);font-size:11px}
   .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .jira{flex-shrink:0;margin-left:6px;padding:0 6px;border-radius:4px;background:rgba(79,140,255,.15);border:1px solid var(--line);color:var(--accent);font-size:10px;font-weight:600;text-decoration:none;white-space:nowrap}
+  .jira:hover{background:var(--accent);color:#fff}
   .chip{display:inline-block;padding:1px 7px;border-radius:20px;background:var(--panel2);color:var(--muted);font-size:11px}
   .mini{color:var(--muted);font-size:11px}
   svg{display:block}
@@ -90,7 +93,7 @@
   .field input,.field select,.field textarea{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px;color:var(--text)}
   .row2{display:flex;gap:12px}
   .row2>*{flex:1}
-  .depsBox{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px}
+  .depsBox{display:flex;flex-direction:column;gap:4px;max-height:240px;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px}
   .depsBox label{display:flex;gap:8px;align-items:center;color:var(--text);font-size:12px;cursor:pointer}
   .depGroup{color:var(--accent);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:6px 0 1px;padding-top:4px;border-top:1px solid var(--line)}
   .depGroup:first-child{border-top:none;padding-top:0;margin-top:0}
@@ -124,6 +127,7 @@
     <button class="btn" onclick="exportJSON()">⬇ Экспорт</button>
     <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Импорт</button>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
+    <button class="btn" onclick="openSettings()" title="Настройки">⚙</button>
     <button class="btn danger ghost" onclick="resetAll()">Сброс</button>
   </header>
 
@@ -161,7 +165,7 @@
 
 <!-- Task modal -->
 <div class="overlay" id="taskModal">
-  <div class="modal">
+  <div class="modal" style="width:720px">
     <h2 id="taskModalTitle">Задача</h2>
     <div class="field"><label>Название</label><input id="f_name" placeholder="Напр. Проектирование агента-диспетчера"></div>
     <div class="field"><label>Группа / раздел</label><input id="f_group" list="groupList" placeholder="Напр. Интеграции">
@@ -170,7 +174,11 @@
     </div>
     <div class="row2">
       <div class="field"><label>Ответственный</label><input id="f_assignee" placeholder="Имя / роль"></div>
+      <div class="field"><label>JIRA-ключ</label><input id="f_jira" placeholder="Напр. PROJ-123"></div>
+    </div>
+    <div class="row2">
       <div class="field"><label>Цвет</label><input type="color" id="f_color" value="#4f8cff"></div>
+      <div class="field"></div>
     </div>
     <div class="row2">
       <div class="field"><label>Старт</label><input type="date" id="f_start"></div>
@@ -217,6 +225,21 @@
     <h2>Сравнение стратегий</h2>
     <div class="cmpGrid" id="cmpGrid"></div>
     <div class="modalActions"><button class="btn primary" onclick="closeModal('cmpModal')">Закрыть</button></div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settingsModal">
+  <div class="modal">
+    <h2>Настройки</h2>
+    <div class="field"><label>Базовый URL JIRA</label>
+      <input id="s_jirabase" placeholder="https://jira.company.ru/browse/">
+      <div class="hint">К нему добавляется ключ задачи. Пример: <code>https://jira.company.ru/browse/</code> + <code>PROJ-123</code>. Сохраняется и уходит в экспорт JSON.</div>
+    </div>
+    <div class="modalActions">
+      <button class="btn" onclick="closeModal('settingsModal')">Отмена</button>
+      <button class="btn primary" onclick="saveSettings()">Сохранить</button>
+    </div>
   </div>
 </div>
 
@@ -372,7 +395,7 @@ function renderTasks(){
     const over=eff[t.id].end>dl;
     const auto=t.deps&&t.deps.length;
     const d=document.createElement('div'); d.className='g-task'+(critical.has(t.id)?' crit':'');
-    d.innerHTML=`<div class="g-name"><span class="dot" style="background:${t.progress>=100?'var(--done)':t.color}"></span>${t.milestone?'◆ ':''}${esc(t.name)}${over?' <span title="За дедлайном" style="color:var(--crit)">⚠</span>':''}</div>
+    d.innerHTML=`<div class="g-name"><span class="nm"><span class="dot" style="background:${t.progress>=100?'var(--done)':t.color}"></span>${t.milestone?'◆ ':''}${esc(t.name)}${over?' <span title="За дедлайном" style="color:var(--crit)">⚠</span>':''}</span>${t.jira?`<a class="jira" href="#" title="Открыть в JIRA" onclick="openJira('${esc(t.jira)}',event)">${esc(t.jira)}</a>`:''}</div>
       <div class="g-meta">${esc(t.assignee||'—')}</div>
       <div class="g-start" title="${auto?'Авто (от зависимостей)':'Задано вручную'}">${auto?'⛓ ':''}${fmt(eff[t.id].start)}</div>
       <div class="g-dur">${t.milestone?'—':t.dur}</div>`;
@@ -492,6 +515,7 @@ function openTask(id){
   const gl=document.getElementById('groupList'); gl.innerHTML='';
   [...new Set(strat.tasks.map(x=>x.group).filter(Boolean))].forEach(g=>gl.innerHTML+=`<option value="${esc(g)}">`);
   document.getElementById('f_assignee').value = t?t.assignee:'';
+  document.getElementById('f_jira').value = t?(t.jira||''):'';
   document.getElementById('f_color').value = t?t.color:'#4f8cff';
   document.getElementById('f_start').value = t?t.start:fmt(new Date());
   document.getElementById('f_dur').value = t?t.dur:5;
@@ -547,6 +571,7 @@ function saveTask(){
     name:document.getElementById('f_name').value.trim()||'Без названия',
     group:document.getElementById('f_group').value.trim(),
     assignee:document.getElementById('f_assignee').value.trim(),
+    jira:document.getElementById('f_jira').value.trim(),
     color:document.getElementById('f_color').value,
     start:document.getElementById('f_start').value||fmt(new Date()),
     dur:Math.max(0,parseInt(document.getElementById('f_dur').value)||0),
@@ -622,6 +647,21 @@ function importJSON(e){
   r.readAsText(f); e.target.value='';
 }
 function resetAll(){ if(confirm('Сбросить всё к стартовому состоянию (Стратегия 1 · одна задача «Тест»)? Текущие данные будут потеряны — сделай экспорт заранее.')){ state=seed(); render(); } }
+
+/* ================= JIRA / Settings ================= */
+function jiraBaseNormalized(){ let b=(state.jiraBase||'').trim(); if(b&&!b.endsWith('/')) b+='/'; return b; }
+function openJira(key,ev){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+  let base=jiraBaseNormalized();
+  if(!base){
+    const v=prompt('Базовый URL JIRA (например https://jira.company.ru/browse/):','');
+    if(!v) return;
+    state.jiraBase=v.trim(); save(); base=jiraBaseNormalized();
+  }
+  window.open(base+encodeURIComponent(key),'_blank','noopener');
+}
+function openSettings(){ document.getElementById('s_jirabase').value=state.jiraBase||''; openModal('settingsModal'); }
+function saveSettings(){ state.jiraBase=document.getElementById('s_jirabase').value.trim(); save(); closeModal('settingsModal'); }
 
 /* ================= Modal utils ================= */
 function openModal(id){ document.getElementById(id).classList.add('open'); }
