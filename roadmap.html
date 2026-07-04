@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Роадмап — Мультиагентная система обзвона</title>
+<title>Роадмап — Мультиагентная система ЦКМ</title>
 <style>
   :root{
     --bg:#0f1420; --panel:#171d2b; --panel2:#1e2635; --line:#2a3347;
@@ -34,6 +34,7 @@
   .strategyTabs{display:flex;gap:6px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
   .tab{padding:6px 14px;border-radius:8px 8px 0 0;background:var(--panel2);border:1px solid var(--line);border-bottom:none;cursor:pointer;color:var(--muted);position:relative;top:1px}
   .tab.active{background:var(--bg);color:var(--text);border-color:var(--accent);border-bottom:1px solid var(--bg)}
+  .tabEdit{background:var(--bg);border:1px solid var(--accent);border-radius:5px;color:var(--text);padding:2px 6px;font:inherit;width:180px;outline:none}
   .tab .x{margin-left:8px;opacity:.5}
   .tab .x:hover{opacity:1;color:var(--crit)}
 
@@ -91,6 +92,10 @@
   .row2>*{flex:1}
   .depsBox{display:flex;flex-direction:column;gap:4px;max-height:150px;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px}
   .depsBox label{display:flex;gap:8px;align-items:center;color:var(--text);font-size:12px;cursor:pointer}
+  .depGroup{color:var(--accent);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:6px 0 1px;padding-top:4px;border-top:1px solid var(--line)}
+  .depGroup:first-child{border-top:none;padding-top:0;margin-top:0}
+  .depName{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .depMeta{flex-shrink:0;white-space:nowrap}
   .modalActions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 
   .cmpGrid{display:flex;gap:14px;flex-wrap:wrap}
@@ -105,7 +110,7 @@
 <body>
 <div class="app">
   <header>
-    <h1>🗺️ Роадмап — Мультиагентная система обзвона</h1>
+    <h1>🗺️ Роадмап — Мультиагентная система ЦКМ</h1>
     <span class="chip" id="projSpan"></span>
     <div class="spacer"></div>
     <div class="zoom">
@@ -177,11 +182,13 @@
     </div>
     <div class="field">
       <label>Зависит от (предшественники)</label>
+      <input id="f_depsearch" placeholder="Поиск: имя, стрим, ответственный…" oninput="filterDeps(this.value)">
       <div class="depsBox" id="f_deps"></div>
-      <div class="hint">Задача не начнётся раньше, чем закончатся выбранные. Используется для критического пути.</div>
+      <div class="hint">Задача не начнётся раньше, чем закончатся выбранные. У одноимённых задач ориентируйся на стрим/ответственного/дату.</div>
     </div>
     <div class="modalActions">
       <button class="btn danger" id="taskDeleteBtn" onclick="deleteTask()">Удалить</button>
+      <button class="btn" id="taskDupBtn" onclick="duplicateTask()">Дублировать</button>
       <div class="spacer" style="flex:1"></div>
       <button class="btn" onclick="closeModal('taskModal')">Отмена</button>
       <button class="btn primary" onclick="saveTask()">Сохранить</button>
@@ -218,6 +225,7 @@
 const STORE_KEY = 'roadmap_multiagent_v1';
 let state = load() || seed();
 let editingTaskId = null;
+let depSel = new Set(); // выбранные предшественники (хранится отдельно от DOM — переживает фильтрацию)
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function activeStrategy(){ return state.strategies.find(s=>s.id===state.active); }
@@ -311,13 +319,29 @@ function renderTabs(){
   state.strategies.forEach(s=>{
     const t=document.createElement('div');
     t.className='tab'+(s.id===state.active?' active':'');
-    t.innerHTML = `<span>${esc(s.name)}</span>`+(state.strategies.length>1?`<span class="x" title="Удалить">✕</span>`:'');
-    t.querySelector('span').onclick=()=>{ state.active=s.id; render(); };
+    t.innerHTML = `<span class="tabName" title="Двойной клик — переименовать">${esc(s.name)}</span>`+(state.strategies.length>1?`<span class="x" title="Удалить">✕</span>`:'');
+    const nameSpan=t.querySelector('.tabName');
+    let clickTimer=null;
+    nameSpan.onclick=()=>{
+      if(clickTimer) return; // второй клик двойного — не активируем, ждём dblclick
+      clickTimer=setTimeout(()=>{ clickTimer=null; if(state.active!==s.id){ state.active=s.id; render(); } },220);
+    };
+    nameSpan.ondblclick=(e)=>{ e.stopPropagation(); if(clickTimer){ clearTimeout(clickTimer); clickTimer=null; } beginRename(s.id,nameSpan); };
     const x=t.querySelector('.x'); if(x) x.onclick=(e)=>{ e.stopPropagation(); if(confirm('Удалить стратегию «'+s.name+'»?')){ state.strategies=state.strategies.filter(z=>z.id!==s.id); if(state.active===s.id) state.active=state.strategies[0].id; render(); } };
     el.appendChild(t);
   });
   const add=document.createElement('button'); add.className='btn ghost'; add.textContent='+ Стратегия'; add.onclick=openStrategy;
   el.appendChild(add);
+}
+// Инлайн-переименование стратегии по двойному клику на вкладке
+function beginRename(id,span){
+  const s=state.strategies.find(z=>z.id===id); if(!s) return;
+  const inp=document.createElement('input'); inp.className='tabEdit'; inp.value=s.name;
+  span.replaceWith(inp); inp.focus(); inp.select();
+  let done=false;
+  const commit=()=>{ if(done)return; done=true; const v=inp.value.trim(); if(v) s.name=v; render(); };
+  inp.onkeydown=(e)=>{ if(e.key==='Enter'){ e.preventDefault(); commit(); } else if(e.key==='Escape'){ done=true; render(); } };
+  inp.onblur=commit;
 }
 
 // Единый порядок строк для списка И для Гантта — чтобы они не разъезжались.
@@ -474,18 +498,51 @@ function openTask(id){
   document.getElementById('f_prog').value = t?t.progress:0;
   document.getElementById('f_milestone').value = t&&t.milestone?'1':'0';
   document.getElementById('taskDeleteBtn').style.display = t?'inline-block':'none';
+  document.getElementById('taskDupBtn').style.display = t?'inline-block':'none';
   // deps
-  const box=document.getElementById('f_deps'); box.innerHTML='';
-  strat.tasks.filter(x=>!id||x.id!==id).forEach(x=>{
-    const checked = t&&t.deps&&t.deps.includes(x.id)?'checked':'';
-    box.innerHTML+=`<label><input type="checkbox" value="${x.id}" ${checked}> ${esc(x.name)}</label>`;
-  });
-  if(!strat.tasks.filter(x=>!id||x.id!==id).length) box.innerHTML='<span class="mini">Пока нет других задач</span>';
+  depSel = new Set(t&&t.deps ? t.deps : []);
+  document.getElementById('f_depsearch').value='';
+  renderDeps('');
   openModal('taskModal');
+}
+// Список предшественников с группой/стримом, ответственным и датой — чтобы различать одноимённые задачи
+function renderDeps(filter){
+  const strat=activeStrategy();
+  const box=document.getElementById('f_deps');
+  const others=strat.tasks.filter(x=>x.id!==editingTaskId);
+  if(!others.length){ box.innerHTML='<span class="mini">Пока нет других задач</span>'; return; }
+  const f=(filter||'').trim().toLowerCase();
+  const eff=resolveDates(strat.tasks);
+  const cand=others.filter(x=> !f || (x.name+' '+(x.group||'')+' '+(x.assignee||'')).toLowerCase().includes(f))
+                   .sort((a,b)=> eff[a.id].start-eff[b.id].start);
+  if(!cand.length){ box.innerHTML='<span class="mini">Ничего не найдено</span>'; return; }
+  const groups=[];
+  cand.forEach(x=>{ const g=x.group||'Без группы'; let e=groups.find(z=>z.name===g); if(!e){ e={name:g,items:[]}; groups.push(e); } e.items.push(x); });
+  let html='';
+  groups.forEach(g=>{
+    html+=`<div class="depGroup">${esc(g.name)}</div>`;
+    g.items.forEach(x=>{
+      const checked=depSel.has(x.id)?'checked':'';
+      const meta=`${x.assignee?esc(x.assignee)+' · ':''}${fmt(eff[x.id].start)}`;
+      html+=`<label><input type="checkbox" ${checked} onchange="toggleDep('${x.id}',this.checked)"> <span class="depName">${x.milestone?'◆ ':''}${esc(x.name)}</span><span class="mini depMeta">${meta}</span></label>`;
+    });
+  });
+  box.innerHTML=html;
+}
+function toggleDep(id,on){ if(on) depSel.add(id); else depSel.delete(id); }
+function filterDeps(v){ renderDeps(v); }
+function duplicateTask(){
+  if(!editingTaskId) return;
+  const strat=activeStrategy();
+  const src=strat.tasks.find(t=>t.id===editingTaskId); if(!src) return;
+  const clone={...src,id:uid(),deps:[...(src.deps||[])]};
+  strat.tasks.push(clone);
+  render();
+  openTask(clone.id); // открыть копию, чтобы сразу сменить стрим/ответственного
 }
 function saveTask(){
   const strat=activeStrategy();
-  const deps=[...document.querySelectorAll('#f_deps input:checked')].map(c=>c.value);
+  const deps=[...depSel].filter(id=>strat.tasks.some(t=>t.id===id&&t.id!==editingTaskId));
   const data={
     name:document.getElementById('f_name').value.trim()||'Без названия',
     group:document.getElementById('f_group').value.trim(),
@@ -564,7 +621,7 @@ function importJSON(e){
   const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.strategies){ state=d; if(!state.active) state.active=state.strategies[0].id; render(); } else alert('Неверный формат файла'); }catch(err){ alert('Ошибка чтения: '+err.message); } };
   r.readAsText(f); e.target.value='';
 }
-function resetAll(){ if(confirm('Сбросить всё к демо-данным? Текущие данные будут потеряны (сделай экспорт заранее).')){ state=seed(); render(); } }
+function resetAll(){ if(confirm('Сбросить всё к стартовому состоянию (Стратегия 1 · одна задача «Тест»)? Текущие данные будут потеряны — сделай экспорт заранее.')){ state=seed(); render(); } }
 
 /* ================= Modal utils ================= */
 function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -574,42 +631,12 @@ document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{
 
 /* ================= Seed data ================= */
 function seed(){
-  // Two starting strategies for the multi-agent call system Q3 goal
-  const s1id=uid(), s2id=uid();
-  const D=(m,d)=>`2026-0${m}-${String(d).padStart(2,'0')}`;
-  function T(name,assignee,start,dur,opts={}){ return {id:uid(),name,assignee,start,dur,color:opts.color||'#4f8cff',progress:opts.progress||0,milestone:!!opts.milestone,deps:opts._deps||[],group:opts.group||''}; }
-
-  // --- Strategy 1: Бомж-вариант (один агент на заглушках) ---
-  const t1a=T('Дизайн общего диалог-флоу','Аналитик',D(7,6),5,{color:'#7c5cff',group:'Дизайн'});
-  const t1b=T('Каркас единого агента','Backend',D(7,13),8,{color:'#4f8cff',group:'Ядро агента'});
-  const t1c=T('Заглушки интеграций (CRM/телефония)','Backend',D(7,13),5,{color:'#38bdf8',group:'Ядро агента'});
-  const t1d=T('Скрипт обзвона + сценарии','Аналитик',D(7,20),6,{color:'#7c5cff',group:'Ядро агента'});
-  const t1e=T('Интеграция с телефонией (реальная)','Integration',D(7,27),7,{color:'#38bdf8',group:'Интеграции'});
-  const t1f=T('Тестовый прогон на 50 клиентах','QA',D(8,10),5,{color:'#2ecc71',group:'Тестирование'});
-  const t1g=T('MVP-демо стейкхолдерам','Тимлид',D(8,17),0,{milestone:true,group:'Тестирование'});
-  t1b._deps=[t1a.id]; t1c._deps=[t1a.id]; t1d._deps=[t1b.id]; t1e._deps=[t1c.id];
-  t1f._deps=[t1d.id,t1e.id]; t1g._deps=[t1f.id];
-
-  // --- Strategy 2: Целевой вариант (3 агента + интеграции) ---
-  const a=T('Архитектура: 3 агента + оркестратор','Архитектор',D(7,6),7,{color:'#7c5cff',group:'Архитектура'});
-  const b=T('Агент-диспетчер (маршрутизация)','Backend',D(7,15),10,{color:'#4f8cff',group:'Агенты'});
-  const c=T('Агент-переговорщик (диалог)','ML',D(7,15),12,{color:'#4f8cff',group:'Агенты'});
-  const d=T('Агент-постобработчик (итоги/CRM)','Backend',D(7,20),9,{color:'#4f8cff',group:'Агенты'});
-  const e=T('Интеграция CRM','Integration',D(7,27),8,{color:'#38bdf8',group:'Интеграции'});
-  const f=T('Интеграция телефонии/ASR-TTS','Integration',D(8,3),9,{color:'#38bdf8',group:'Интеграции'});
-  const g=T('Шина событий между агентами','Backend',D(8,3),7,{color:'#4f8cff',group:'Интеграции'});
-  const h=T('Комплаенс/логирование звонков','Security',D(8,10),6,{color:'#ff9f43',group:'Комплаенс'});
-  const i=T('Сквозное E2E-тестирование','QA',D(8,24),8,{color:'#2ecc71',group:'Приёмка'});
-  const j=T('Пилот на проде (500 клиентов)','Тимлид',D(9,7),7,{color:'#2ecc71',group:'Приёмка'});
-  const k=T('Приёмка целевого релиза','Тимлид',D(9,18),0,{milestone:true,group:'Приёмка'});
-  b._deps=[a.id]; c._deps=[a.id]; d._deps=[a.id]; e._deps=[d.id]; f._deps=[c.id];
-  g._deps=[b.id,c.id,d.id]; h._deps=[d.id]; i._deps=[e.id,f.id,g.id,h.id]; j._deps=[i.id]; k._deps=[j.id];
-
+  const s1id=uid();
+  const test={id:uid(),name:'Тест',assignee:'',start:'2026-07-06',dur:5,color:'#4f8cff',progress:0,milestone:false,deps:[],group:''};
   return {
     active:s1id,
     strategies:[
-      {id:s1id,name:'Бомж-вариант (заглушки)',tasks:[t1a,t1b,t1c,t1d,t1e,t1f,t1g]},
-      {id:s2id,name:'Целевой (3 агента + интеграции)',tasks:[a,b,c,d,e,f,g,h,i,j,k]}
+      {id:s1id,name:'Стратегия 1',tasks:[test]}
     ]
   };
 }
