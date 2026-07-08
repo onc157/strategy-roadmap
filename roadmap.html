@@ -276,6 +276,7 @@ let state = load() || seed();
 let editingTaskId = null;
 let depSel = new Set(); // выбранные предшественники (хранится отдельно от DOM — переживает фильтрацию)
 let selColor='#4f8cff', selProgress=0;
+let frozenRows=null; // во время перетаскивания порядок строк не пересчитывается (иначе блоки прыгают)
 const PALETTE=['#4f8cff','#7c5cff','#38bdf8','#22d3ee','#2ecc71','#a3e635','#ffb020','#ff9f43','#ff5470','#e879f9','#94a3b8','#64748b'];
 const PROGS=[0,25,50,75,100];
 
@@ -413,6 +414,8 @@ function buildRows(tasks){
   groups.forEach(g=>{ g.items=orderMilestones(g.items); if(g.name) rows.push({type:'group',name:g.name,count:g.items.length}); g.items.forEach(t=>rows.push({type:'task',task:t})); });
   return rows;
 }
+// При перетаскивании отдаём зафиксированный порядок, иначе — пересчитанный
+function displayRows(tasks){ return frozenRows || buildRows(tasks); }
 // Веха ставится сразу под своей связанной задачей (позднейшим предшественником в той же группе)
 function orderMilestones(items){
   const res=[...items];
@@ -431,7 +434,7 @@ function renderTasks(){
   const {critical,eff}=computeSchedule(strat.tasks);
   const dl=parseDate(state.deadline);
   const host=document.getElementById('taskRows'); host.innerHTML='';
-  buildRows(strat.tasks).forEach(r=>{
+  displayRows(strat.tasks).forEach(r=>{
     if(r.type==='group'){
       const d=document.createElement('div'); d.className='g-group';
       d.innerHTML=`▸ ${esc(r.name)} <span class="mini" style="margin-left:6px;text-transform:none;letter-spacing:0">· ${r.count}</span>`;
@@ -459,7 +462,7 @@ function renderGantt(){
   const head=document.getElementById('ganttHead');
   if(!strat.tasks.length){ head.innerHTML=''; body.innerHTML='<div style="padding:40px;color:var(--muted)">Нет задач. Нажмите «+ Задача».</div>'; return; }
   const {minStart,maxEnd,critical,eff}=computeSchedule(strat.tasks);
-  const rows=buildRows(strat.tasks); // тот же порядок и группы, что и в списке слева
+  const rows=displayRows(strat.tasks); // тот же порядок и группы, что и в списке слева
   const zoom=state.zoom, dayW=ZOOM[zoom]||24, rowH=34, headH=48;
   const dl=parseDate(state.deadline);
   const start=new Date(minStart); start.setDate(start.getDate()-3);
@@ -901,6 +904,7 @@ function seed(){
     const mode=el.hasAttribute('data-resize')?'resize':'move';
     const anchor=(GCTX.eff[t.id]&&GCTX.eff[t.id].start)?GCTX.eff[t.id].start:parseDate(t.start);
     d={t,mode,x0:e.clientX,start0:t.start,dur0:t.dur,anchor,moved:false};
+    frozenRows=buildRows(strat.tasks); // заморозить порядок строк на время перетаскивания
     document.body.style.cursor=mode==='resize'?'ew-resize':'grabbing';
     document.body.style.userSelect='none';
     e.preventDefault();
@@ -916,7 +920,8 @@ function seed(){
   window.addEventListener('mouseup',()=>{
     if(!d) return; const dd=d; d=null;
     document.body.style.cursor=''; document.body.style.userSelect='';
-    if(!dd.moved) openTask(dd.t.id); else save();
+    frozenRows=null; // разморозить и пересчитать порядок один раз
+    if(!dd.moved) openTask(dd.t.id); else { save(); render(); }
   });
 })();
 
