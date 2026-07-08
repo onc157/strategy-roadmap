@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Роадмап — Мультиагентная система ЦКМ</title>
+<title>Roadmap Creator</title>
 <style>
   :root{
     --bg:#0f1420; --panel:#171d2b; --panel2:#1e2635; --line:#2a3347;
@@ -24,12 +24,23 @@
   .btn.primary:hover{background:#3d7bf0}
   .btn.ghost{background:transparent}
   .btn.danger:hover{border-color:var(--crit);color:var(--crit)}
-  .zoom{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
-  .zb{background:var(--panel2);border:none;border-right:1px solid var(--line);color:var(--muted);padding:7px 12px;cursor:pointer}
+  /* Единый размер и центровка всех контролов шапки */
+  header .btn{height:34px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:14px;line-height:1;padding:0 12px}
+  .ic{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;flex:none}
+  .ic svg{width:16px;height:16px;display:block}
+  .zoom{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;height:34px}
+  .zb{background:var(--panel2);border:none;border-right:1px solid var(--line);color:var(--muted);padding:0 12px;cursor:pointer;display:inline-flex;align-items:center;font-size:14px;line-height:1}
   .zb:last-child{border-right:none}
   .zb.active{background:var(--accent);color:#fff}
   .dl{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
-  .dl input{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px;color:var(--text)}
+  .dl input{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:0 8px;height:34px;color:var(--text)}
+  input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.75);cursor:pointer}
+  .menu{position:relative}
+  .menu.open .menuList{display:block}
+  .menuList{display:none;position:absolute;right:0;top:calc(100% + 5px);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:190px;z-index:60;box-shadow:0 10px 28px rgba(0,0,0,.45)}
+  .menuList button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:none;color:var(--text);padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px}
+  .menuList button:hover{background:#232c3e}
+  .menuList button.danger:hover{color:var(--crit)}
 
   .strategyTabs{display:flex;gap:6px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
   .tab{padding:6px 14px;border-radius:8px 8px 0 0;background:var(--panel2);border:1px solid var(--line);border-bottom:none;cursor:pointer;color:var(--muted);position:relative;top:1px}
@@ -88,6 +99,15 @@
   .overlay.open{display:flex}
   .modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;width:520px;max-width:92vw;max-height:88vh;overflow:auto;padding:20px}
   .modal h2{margin:0 0 14px;font-size:16px}
+  .modalHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+  .modalHead h2{margin:0}
+  .swatches{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .sw2{width:20px;height:20px;border-radius:50%;border:none;cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+  .sw2.on{outline:2px solid var(--text);outline-offset:2px}
+  .segs{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .segs button{flex:1;background:var(--panel2);border:none;border-right:1px solid var(--line);color:var(--muted);padding:8px 0;cursor:pointer;font-size:12px}
+  .segs button:last-child{border-right:none}
+  .segs button.on{background:var(--accent);color:#fff}
   .field{margin-bottom:12px;display:flex;flex-direction:column;gap:5px}
   .field label{color:var(--muted);font-size:12px}
   .field input,.field select,.field textarea{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px;color:var(--text)}
@@ -113,7 +133,7 @@
 <body>
 <div class="app">
   <header>
-    <h1>🗺️ Роадмап — Мультиагентная система ЦКМ</h1>
+    <h1>🗺️ Roadmap Creator</h1>
     <span class="chip" id="projSpan"></span>
     <div class="spacer"></div>
     <div class="zoom">
@@ -122,13 +142,21 @@
       <button class="zb" data-z="month" onclick="setZoom('month')">Месяц</button>
     </div>
     <label class="dl">Дедлайн <input type="date" id="deadlineInput" onchange="setDeadline(this.value)"></label>
-    <button class="btn primary" onclick="openTask()">+ Задача</button>
-    <button class="btn" onclick="openCompare()">📊 Сравнить стратегии</button>
-    <button class="btn" onclick="exportJSON()">⬇ Экспорт</button>
-    <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Импорт</button>
+    <button class="btn" id="labelToggle" onclick="toggleLabel()" title="Что писать на барах диаграммы"><span class="ic" data-icon="tag"></span><span id="labelToggleText"></span></button>
+    <button class="btn primary" onclick="openTask()"><span class="ic" data-icon="plus"></span>Задача</button>
+    <button class="btn" onclick="openCompare()" title="Сравнить стратегии"><span class="ic" data-icon="bar"></span>Сравнить</button>
+    <div class="menu" id="fileMenu">
+      <button class="btn" onclick="toggleMenu(event)"><span class="ic" data-icon="more"></span>Ещё</button>
+      <div class="menuList">
+        <button onclick="exportJSON()"><span class="ic" data-icon="download"></span>Экспорт JSON</button>
+        <button onclick="exportPNG()"><span class="ic" data-icon="image"></span>Экспорт PNG</button>
+        <button onclick="exportXLSX()"><span class="ic" data-icon="table"></span>Экспорт Excel</button>
+        <button onclick="document.getElementById('importFile').click()"><span class="ic" data-icon="upload"></span>Импорт JSON</button>
+        <button class="danger" onclick="resetAll()"><span class="ic" data-icon="reset"></span>Сброс</button>
+      </div>
+    </div>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importJSON(event)">
-    <button class="btn" onclick="openSettings()" title="Настройки">⚙</button>
-    <button class="btn danger ghost" onclick="resetAll()">Сброс</button>
+    <button class="btn" onclick="openSettings()" title="Настройки"><span class="ic" data-icon="gear"></span></button>
   </header>
 
   <div class="strategyTabs" id="tabs"></div>
@@ -166,27 +194,25 @@
 <!-- Task modal -->
 <div class="overlay" id="taskModal">
   <div class="modal" style="width:720px">
-    <h2 id="taskModalTitle">Задача</h2>
-    <div class="field"><label>Название</label><input id="f_name" placeholder="Напр. Проектирование агента-диспетчера"></div>
-    <div class="field"><label>Группа / раздел</label><input id="f_group" list="groupList" placeholder="Напр. Интеграции">
-      <datalist id="groupList"></datalist>
-      <div class="hint">Задачи с одинаковой группой объединяются под общим заголовком в списке слева.</div>
+    <div class="modalHead">
+      <h2 id="taskModalTitle">Задача</h2>
+      <div class="swatches" id="f_colorSwatches" title="Цвет метки"></div>
+    </div>
+    <div class="row2">
+      <div class="field" style="flex:7"><label>Название</label><input id="f_name" placeholder="Напр. Проектирование агента-диспетчера"></div>
+      <div class="field" style="flex:3"><label>Группа / раздел</label><input id="f_group" list="groupList" placeholder="Напр. Интеграции"><datalist id="groupList"></datalist></div>
     </div>
     <div class="row2">
       <div class="field"><label>Ответственный</label><input id="f_assignee" placeholder="Имя / роль"></div>
       <div class="field"><label>JIRA-ключ</label><input id="f_jira" placeholder="Напр. PROJ-123"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Цвет</label><input type="color" id="f_color" value="#4f8cff"></div>
-      <div class="field"></div>
-    </div>
-    <div class="row2">
       <div class="field"><label>Старт</label><input type="date" id="f_start"></div>
       <div class="field"><label>Длительность (раб. дней)</label><input type="number" min="0" id="f_dur" value="5"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Прогресс, %</label><input type="number" min="0" max="100" id="f_prog" value="0"></div>
-      <div class="field"><label>Тип</label><select id="f_milestone"><option value="0">Задача</option><option value="1">Веха</option></select></div>
+      <div class="field" style="flex:7"><label>Прогресс</label><div class="segs" id="f_progSeg"></div></div>
+      <div class="field" style="flex:3"><label>Тип</label><select id="f_milestone"><option value="0">Задача</option><option value="1">Веха</option></select></div>
     </div>
     <div class="field">
       <label>Зависит от (предшественники)</label>
@@ -249,6 +275,9 @@ const STORE_KEY = 'roadmap_multiagent_v1';
 let state = load() || seed();
 let editingTaskId = null;
 let depSel = new Set(); // выбранные предшественники (хранится отдельно от DOM — переживает фильтрацию)
+let selColor='#4f8cff', selProgress=0;
+const PALETTE=['#4f8cff','#7c5cff','#38bdf8','#22d3ee','#2ecc71','#a3e635','#ffb020','#ff9f43','#ff5470','#e879f9','#94a3b8','#64748b'];
+const PROGS=[0,25,50,75,100];
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function activeStrategy(){ return state.strategies.find(s=>s.id===state.active); }
@@ -326,16 +355,21 @@ function computeSchedule(tasks){
 function render(){
   state.zoom=state.zoom||'day';
   state.deadline=state.deadline||'2026-09-30';
+  state.barLabel=state.barLabel||'assignee';
   renderTabs();
   renderTasks();
   renderGantt();
   document.getElementById('projSpan').textContent = 'Q3 2026 · стратегий: '+state.strategies.length;
   const di=document.getElementById('deadlineInput'); if(di) di.value=state.deadline;
   document.querySelectorAll('.zb').forEach(b=>b.classList.toggle('active',b.dataset.z===state.zoom));
+  const lt=document.getElementById('labelToggleText'); if(lt) lt.textContent=(state.barLabel==='name'?'Имя':'Отв.');
   save();
 }
+function toggleMenu(e){ e.stopPropagation(); document.getElementById('fileMenu').classList.toggle('open'); }
+document.addEventListener('click',()=>{ const m=document.getElementById('fileMenu'); if(m) m.classList.remove('open'); });
 function setZoom(z){ state.zoom=z; render(); }
 function setDeadline(v){ if(v) state.deadline=v; render(); }
+function toggleLabel(){ state.barLabel = state.barLabel==='name'?'assignee':'name'; render(); }
 
 function renderTabs(){
   const el=document.getElementById('tabs'); el.innerHTML='';
@@ -376,8 +410,20 @@ function buildRows(tasks){
   sorted.forEach(t=>{ const g=t.group||''; let e=groups.find(x=>x.name===g); if(!e){ e={name:g,items:[]}; groups.push(e); } e.items.push(t); });
   groups.sort((a,b)=> (a.name?0:1)-(b.name?0:1)); // безымянная группа — в конец
   const rows=[];
-  groups.forEach(g=>{ if(g.name) rows.push({type:'group',name:g.name,count:g.items.length}); g.items.forEach(t=>rows.push({type:'task',task:t})); });
+  groups.forEach(g=>{ g.items=orderMilestones(g.items); if(g.name) rows.push({type:'group',name:g.name,count:g.items.length}); g.items.forEach(t=>rows.push({type:'task',task:t})); });
   return rows;
+}
+// Веха ставится сразу под своей связанной задачей (позднейшим предшественником в той же группе)
+function orderMilestones(items){
+  const res=[...items];
+  res.filter(t=>t.milestone && t.deps && t.deps.length).forEach(m=>{
+    let a=-1; m.deps.forEach(dep=>{ const i=res.findIndex(x=>x.id===dep); if(i>a) a=i; });
+    if(a<0) return; // предшественник не в этой группе — оставляем по дате
+    res.splice(res.indexOf(m),1);
+    let a2=-1; m.deps.forEach(dep=>{ const i=res.findIndex(x=>x.id===dep); if(i>a2) a2=i; });
+    res.splice(a2+1,0,m);
+  });
+  return res;
 }
 
 function renderTasks(){
@@ -475,9 +521,9 @@ function renderGantt(){
   svg+=`<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--muted)"/></marker></defs>`;
   strat.tasks.forEach(t=>{ (t.deps||[]).forEach(dep=>{
     if(rowIndex[dep]===undefined||rowIndex[t.id]===undefined||!eff[dep]) return;
-    const px=xOf(eff[dep].end)+dayW, py=rowIndex[dep]*rowH+rowH/2;
-    const cx=xOf(eff[t.id].start), cy=rowIndex[t.id]*rowH+rowH/2;
-    svg+=`<path d="M${px},${py} C${px+14},${py} ${cx-14},${cy} ${cx},${cy}" fill="none" stroke="var(--muted)" stroke-width="1.3" marker-end="url(#arrow)" opacity=".7"/>`;
+    const sx=xOf(eff[dep].end)+dayW/2, sy=rowIndex[dep]*rowH+rowH-8; // низ середины последнего дня предшественника
+    const ex=xOf(eff[t.id].start), ey=rowIndex[t.id]*rowH+rowH/2;    // левый край, середина следующего
+    svg+=`<path d="M${sx},${sy} C${sx},${ey} ${ex-24},${ey} ${ex},${ey}" fill="none" stroke="var(--muted)" stroke-width="1.3" marker-end="url(#arrow)" opacity=".7"/>`;
   }); });
 
   // bars (draggable)
@@ -487,8 +533,9 @@ function renderGantt(){
     const y=i*rowH+6, h=rowH-14, isCrit=critical.has(t.id), over=e.end>dl;
     if(t.milestone){
       const cx=xOf(e.start)+dayW/2, cy=y+h/2, rr=9;
-      svg+=`<polygon data-bar="${t.id}" points="${cx},${cy-rr} ${cx+rr},${cy} ${cx},${cy+rr} ${cx-rr},${cy}" fill="var(--milestone)" stroke="${over?'var(--crit)':(isCrit?'var(--crit)':'#0f1420')}" stroke-width="2" style="cursor:grab"/>`;
-      svg+=`<text x="${cx+rr+6}" y="${cy+4}" class="barLabel" style="fill:var(--milestone)">${esc(t.name)}${over?' ⚠':''}</text>`;
+      const mColor=t.progress>=100?'var(--done)':'var(--milestone)';
+      svg+=`<polygon data-bar="${t.id}" points="${cx},${cy-rr} ${cx+rr},${cy} ${cx},${cy+rr} ${cx-rr},${cy}" fill="${mColor}" stroke="${over?'var(--crit)':(isCrit?'var(--crit)':'#0f1420')}" stroke-width="2" style="cursor:grab"/>`;
+      svg+=`<text x="${cx+rr+6}" y="${cy+4}" class="barLabel" style="fill:${mColor}">${esc(t.name)}${t.progress>=100?' ✓':''}${over?' ⚠':''}</text>`;
     } else {
       const x=xOf(e.start), cols=Math.round((e.end-e.start)/86400000)+1;
       const w=Math.max(cols*dayW, Math.max(dayW*0.6,5));
@@ -497,7 +544,8 @@ function renderGantt(){
       if(t.progress>0) svg+=`<rect x="${x}" y="${y}" width="${w*Math.min(t.progress,100)/100}" height="${h}" rx="5" fill="${t.progress>=100?'var(--done)':barColor}" style="pointer-events:none"/>`;
       svg+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="none" stroke="${over?'var(--crit)':barColor}" stroke-width="1.5" style="pointer-events:none"/>`;
       svg+=`<rect data-bar="${t.id}" data-resize="1" x="${x+w-5}" y="${y}" width="8" height="${h}" fill="transparent" style="cursor:ew-resize"/>`;
-      svg+=`<text x="${x+w+8}" y="${y+h/2+4}" class="barLabel" style="fill:${over?'var(--crit)':'var(--text)'}">${esc(t.assignee||'')}${over?' ⚠':''}</text>`;
+      const lbl=state.barLabel==='name'?t.name:(t.assignee||'');
+      svg+=`<text x="${x+w+8}" y="${y+h/2+4}" class="barLabel" style="fill:${over?'var(--crit)':'var(--text)'}">${esc(lbl)}${over?' ⚠':''}</text>`;
     }
   });
   svg+=`</svg>`;
@@ -516,10 +564,10 @@ function openTask(id){
   [...new Set(strat.tasks.map(x=>x.group).filter(Boolean))].forEach(g=>gl.innerHTML+=`<option value="${esc(g)}">`);
   document.getElementById('f_assignee').value = t?t.assignee:'';
   document.getElementById('f_jira').value = t?(t.jira||''):'';
-  document.getElementById('f_color').value = t?t.color:'#4f8cff';
+  selColor = (t&&t.color)?t.color:'#4f8cff'; renderSwatches();
   document.getElementById('f_start').value = t?t.start:fmt(new Date());
   document.getElementById('f_dur').value = t?t.dur:5;
-  document.getElementById('f_prog').value = t?t.progress:0;
+  selProgress = t?(t.progress||0):0; renderProgress();
   document.getElementById('f_milestone').value = t&&t.milestone?'1':'0';
   document.getElementById('taskDeleteBtn').style.display = t?'inline-block':'none';
   document.getElementById('taskDupBtn').style.display = t?'inline-block':'none';
@@ -555,6 +603,15 @@ function renderDeps(filter){
 }
 function toggleDep(id,on){ if(on) depSel.add(id); else depSel.delete(id); }
 function filterDeps(v){ renderDeps(v); }
+function renderSwatches(){
+  const box=document.getElementById('f_colorSwatches'); if(!box) return; box.innerHTML='';
+  const pal=PALETTE.includes(selColor)?PALETTE:[selColor,...PALETTE]; // сохранить кастомный цвет старых задач
+  pal.forEach(c=>{ const b=document.createElement('button'); b.type='button'; b.className='sw2'+(c.toLowerCase()===selColor.toLowerCase()?' on':''); b.style.background=c; b.title=c; b.onclick=()=>{ selColor=c; renderSwatches(); }; box.appendChild(b); });
+}
+function renderProgress(){
+  const box=document.getElementById('f_progSeg'); if(!box) return; box.innerHTML='';
+  PROGS.forEach(p=>{ const b=document.createElement('button'); b.type='button'; b.className=(p===selProgress?'on':''); b.textContent=p+'%'; b.onclick=()=>{ selProgress=p; renderProgress(); }; box.appendChild(b); });
+}
 function duplicateTask(){
   if(!editingTaskId) return;
   const strat=activeStrategy();
@@ -572,10 +629,10 @@ function saveTask(){
     group:document.getElementById('f_group').value.trim(),
     assignee:document.getElementById('f_assignee').value.trim(),
     jira:document.getElementById('f_jira').value.trim(),
-    color:document.getElementById('f_color').value,
+    color:selColor,
     start:document.getElementById('f_start').value||fmt(new Date()),
     dur:Math.max(0,parseInt(document.getElementById('f_dur').value)||0),
-    progress:Math.min(100,Math.max(0,parseInt(document.getElementById('f_prog').value)||0)),
+    progress:selProgress,
     milestone:document.getElementById('f_milestone').value==='1',
     deps
   };
@@ -641,6 +698,139 @@ function exportJSON(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download='roadmap-'+fmt(new Date())+'.json'; a.click();
 }
+/* ---- XLSX (без библиотек: собираем OOXML + ZIP вручную) ---- */
+function exportXLSX(){
+  const strat=activeStrategy();
+  const eff=resolveDates(strat.tasks);
+  const byId={}; strat.tasks.forEach(t=>byId[t.id]=t);
+  const headers=['Задача','Группа/стрим','Ответственный','Старт','Дней','Прогресс %','JIRA','Тип','Зависимости'];
+  const data=[];
+  buildRows(strat.tasks).forEach(r=>{ if(r.type!=='task') return; const t=r.task;
+    const deps=(t.deps||[]).map(d=>byId[d]?byId[d].name:'').filter(Boolean).join(' | ');
+    data.push([t.name, t.group||'', t.assignee||'', fmt(eff[t.id].start), t.milestone?'':Number(t.dur), t.milestone?'':Number(t.progress), t.jira||'', t.milestone?'Веха':'Задача', deps]);
+  });
+  const blob=buildXlsx(headers,data,[40,20,20,12,7,11,16,10,44]);
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='roadmap-'+(strat.name||'strategy').replace(/[^\wа-яё-]+/gi,'_')+'-'+fmt(new Date())+'.xlsx'; a.click();
+}
+function xmlEsc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
+function colLetter(n){ let s=''; n++; while(n>0){ const m=(n-1)%26; s=String.fromCharCode(65+m)+s; n=Math.floor((n-1)/26); } return s; }
+function buildXlsx(headers,data,widths){
+  let colsXml='<cols>';
+  for(let i=0;i<headers.length;i++) colsXml+=`<col min="${i+1}" max="${i+1}" width="${widths[i]||15}" customWidth="1"/>`;
+  colsXml+='</cols>';
+  let rows=`<row r="1">`;
+  headers.forEach((h,i)=>{ rows+=`<c r="${colLetter(i)}1" t="inlineStr" s="1"><is><t xml:space="preserve">${xmlEsc(h)}</t></is></c>`; });
+  rows+=`</row>`;
+  data.forEach((row,ri)=>{ const r=ri+2; rows+=`<row r="${r}">`;
+    row.forEach((v,i)=>{ const ref=colLetter(i)+r;
+      if(typeof v==='number' && isFinite(v)) rows+=`<c r="${ref}"><v>${v}</v></c>`;
+      else if(v!=='' && v!=null) rows+=`<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+    });
+    rows+=`</row>`;
+  });
+  const lastRef=colLetter(headers.length-1)+(data.length+1);
+  const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>${colsXml}<sheetData>${rows}</sheetData><autoFilter ref="A1:${lastRef}"/></worksheet>`;
+  const ct=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+  const rels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const wb=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Роадмап" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+  const wbRels=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2F5BAA"/></patternFill></fill></fills><borders count="1"><border/></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs></styleSheet>`;
+  return zipStore([
+    {name:'[Content_Types].xml',data:strToU8(ct)},
+    {name:'_rels/.rels',data:strToU8(rels)},
+    {name:'xl/workbook.xml',data:strToU8(wb)},
+    {name:'xl/_rels/workbook.xml.rels',data:strToU8(wbRels)},
+    {name:'xl/styles.xml',data:strToU8(styles)},
+    {name:'xl/worksheets/sheet1.xml',data:strToU8(sheet)},
+  ]);
+}
+function strToU8(s){ return new TextEncoder().encode(s); }
+function crc32(b){ let c=~0; for(let i=0;i<b.length;i++){ c^=b[i]; for(let k=0;k<8;k++) c=(c>>>1)^(0xEDB88320 & -(c&1)); } return (~c)>>>0; }
+function zipStore(files){ // ZIP без сжатия (store) — Excel это принимает
+  const parts=[], central=[]; let offset=0;
+  files.forEach(f=>{
+    const name=strToU8(f.name), data=f.data, crc=crc32(data), len=data.length;
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint32(14,crc,true); lh.setUint32(18,len,true); lh.setUint32(22,len,true); lh.setUint16(26,name.length,true);
+    parts.push(new Uint8Array(lh.buffer),name,data);
+    const cd=new DataView(new ArrayBuffer(46));
+    cd.setUint32(0,0x02014b50,true); cd.setUint16(4,20,true); cd.setUint16(6,20,true); cd.setUint32(16,crc,true); cd.setUint32(20,len,true); cd.setUint32(24,len,true); cd.setUint16(28,name.length,true); cd.setUint32(42,offset,true);
+    central.push(new Uint8Array(cd.buffer),name);
+    offset+=30+name.length+len;
+  });
+  let cSize=0; central.forEach(u=>cSize+=u.length);
+  const eocd=new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0,0x06054b50,true); eocd.setUint16(8,files.length,true); eocd.setUint16(10,files.length,true); eocd.setUint32(12,cSize,true); eocd.setUint32(16,offset,true);
+  return new Blob([...parts,...central,new Uint8Array(eocd.buffer)],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+
+/* ---- PNG ---- */
+function clip(s,n){ s=s||''; return s.length>n ? s.slice(0,n-1)+'…' : s; }
+function buildExportSVG(){
+  const strat=activeStrategy();
+  const {minStart,maxEnd,critical,eff}=computeSchedule(strat.tasks);
+  const rows=buildRows(strat.tasks);
+  if(!rows.length) return null;
+  const zoom=state.zoom, dayW=ZOOM[zoom]||24, rowH=34, headH=48, leftW=300;
+  const dl=parseDate(state.deadline);
+  const start=new Date(minStart); start.setDate(start.getDate()-3);
+  let end=new Date(maxEnd); end.setDate(end.getDate()+5); if(dl>end) end=addDays(dl,3);
+  const totalDays=Math.round((end-start)/86400000)+1;
+  const chartW=totalDays*dayW, bodyH=rows.length*rowH+6, W=leftW+chartW, H=headH+bodyH;
+  const rowIndex={}; rows.forEach((r,i)=>{ if(r.type==='task') rowIndex[r.task.id]=i; });
+  const xOf=(dt)=>leftW+Math.round((dt-start)/86400000)*dayW;
+  let s=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="Segoe UI, Arial, sans-serif">`;
+  s+=`<rect width="${W}" height="${H}" fill="#0f1420"/>`;
+  s+=`<rect x="0" y="0" width="${leftW}" height="${H}" fill="#171d2b"/>`;
+  s+=`<rect x="0" y="0" width="${W}" height="${headH}" fill="#171d2b"/>`;
+  let cur=new Date(start);
+  for(let i=0;i<totalDays;i++){ const x=leftW+i*dayW, monthStart=(cur.getDate()===1||i===0), monday=(cur.getDay()===1||i===0);
+    if(monthStart) s+=`<text x="${x+4}" y="18" fill="#e6ebf5" font-size="10" font-weight="600">${esc(cur.toLocaleString('ru',{month:'long',year:'numeric'}))}</text>`;
+    if(zoom==='day'){ s+=`<line x1="${x}" y1="26" x2="${x}" y2="${H}" stroke="#212a3c"/>`; s+=`<text x="${x+dayW/2}" y="42" text-anchor="middle" fill="#8b97ad" font-size="10">${cur.getDate()}</text>`; }
+    else if(zoom==='week'){ if(monday){ s+=`<line x1="${x}" y1="26" x2="${x}" y2="${H}" stroke="#212a3c"/>`; s+=`<text x="${x+3}" y="42" fill="#8b97ad" font-size="10">${cur.getDate()}.${cur.getMonth()+1}</text>`; } }
+    else { if(monthStart) s+=`<line x1="${x}" y1="24" x2="${x}" y2="${H}" stroke="#2a3347"/>`; }
+    cur.setDate(cur.getDate()+1);
+  }
+  if(dl>=start&&dl<=end){ const dx=xOf(dl)+dayW/2; s+=`<line x1="${dx}" y1="22" x2="${dx}" y2="${H}" stroke="#ffb020" stroke-width="1.5" stroke-dasharray="5 3"/>`; }
+  rows.forEach((r,i)=>{ const y=headH+i*rowH;
+    if(r.type==='group'){ s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="rgba(79,140,255,0.10)"/><text x="8" y="${y+rowH/2+4}" fill="#4f8cff" font-size="11" font-weight="700">${esc('▸ '+r.name.toUpperCase()+' · '+r.count)}</text>`; return; }
+    const t=r.task, e=eff[t.id], isCrit=critical.has(t.id), over=e.end>dl;
+    s+=`<line x1="0" y1="${y+rowH}" x2="${W}" y2="${y+rowH}" stroke="#2a3347"/>`;
+    s+=`<text x="10" y="${y+rowH/2+4}" fill="#e6ebf5" font-size="12">${esc((t.milestone?'◆ ':'')+clip(t.name,30))}</text>`;
+    if(t.assignee) s+=`<text x="${leftW-8}" y="${y+rowH/2+4}" text-anchor="end" fill="#8b97ad" font-size="10">${esc(clip(t.assignee,16))}</text>`;
+    const by=y+6, h=rowH-14;
+    if(t.milestone){ const cx=xOf(e.start)+dayW/2, cy=by+h/2, rr=8, mc=t.progress>=100?'#2ecc71':'#ffb020';
+      s+=`<polygon points="${cx},${cy-rr} ${cx+rr},${cy} ${cx},${cy+rr} ${cx-rr},${cy}" fill="${mc}"/>`;
+      s+=`<text x="${cx+rr+5}" y="${cy+4}" fill="${mc}" font-size="11">${esc(t.name+(t.progress>=100?' ✓':''))}</text>`;
+    } else { const x=xOf(e.start), cols=Math.round((e.end-e.start)/86400000)+1, w=Math.max(cols*dayW,5), bc=isCrit?'#ff5470':t.color;
+      s+=`<rect x="${x}" y="${by}" width="${w}" height="${h}" rx="5" fill="${bc}" opacity="0.35"/>`;
+      if(t.progress>0) s+=`<rect x="${x}" y="${by}" width="${w*Math.min(t.progress,100)/100}" height="${h}" rx="5" fill="${t.progress>=100?'#2ecc71':bc}"/>`;
+      s+=`<rect x="${x}" y="${by}" width="${w}" height="${h}" rx="5" fill="none" stroke="${over?'#ff5470':bc}" stroke-width="1.5"/>`;
+      const lbl=state.barLabel==='name'?t.name:(t.assignee||''); if(lbl) s+=`<text x="${x+w+6}" y="${by+h/2+4}" fill="#e6ebf5" font-size="11">${esc(lbl)}</text>`;
+    }
+  });
+  s+=`<defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#8b97ad"/></marker></defs>`;
+  strat.tasks.forEach(t=>{ (t.deps||[]).forEach(dep=>{ if(rowIndex[dep]===undefined||rowIndex[t.id]===undefined||!eff[dep]) return;
+    const sx=xOf(eff[dep].end)+dayW/2, sy=headH+rowIndex[dep]*rowH+rowH-8;
+    const ex=xOf(eff[t.id].start), ey=headH+rowIndex[t.id]*rowH+rowH/2;
+    s+=`<path d="M${sx},${sy} C${sx},${ey} ${ex-24},${ey} ${ex},${ey}" fill="none" stroke="#8b97ad" stroke-width="1.3" marker-end="url(#ar)" opacity="0.7"/>`;
+  }); });
+  s+=`<line x1="${leftW}" y1="0" x2="${leftW}" y2="${H}" stroke="#2a3347"/></svg>`;
+  return {svg:s,W,H};
+}
+function exportPNG(){
+  const r=buildExportSVG(); if(!r){ alert('Нет задач для выгрузки'); return; }
+  const scale=2, img=new Image();
+  const url=URL.createObjectURL(new Blob([r.svg],{type:'image/svg+xml;charset=utf-8'}));
+  img.onload=()=>{
+    const c=document.createElement('canvas'); c.width=r.W*scale; c.height=r.H*scale;
+    const ctx=c.getContext('2d'); ctx.scale(scale,scale); ctx.drawImage(img,0,0); URL.revokeObjectURL(url);
+    c.toBlob(b=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='roadmap-'+(activeStrategy().name||'strategy').replace(/[^\wа-яё-]+/gi,'_')+'-'+fmt(new Date())+'.png'; a.click(); });
+  };
+  img.onerror=()=>{ URL.revokeObjectURL(url); alert('Не удалось сгенерировать PNG'); };
+  img.src=url;
+}
 function importJSON(e){
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.strategies){ state=d; if(!state.active) state.active=state.strategies[0].id; render(); } else alert('Неверный формат файла'); }catch(err){ alert('Ошибка чтения: '+err.message); } };
@@ -663,11 +853,30 @@ function openJira(key,ev){
 function openSettings(){ document.getElementById('s_jirabase').value=state.jiraBase||''; openModal('settingsModal'); }
 function saveSettings(){ state.jiraBase=document.getElementById('s_jirabase').value.trim(); save(); closeModal('settingsModal'); }
 
+/* ================= Иконки (единый набор, монохром, SVG) ================= */
+const ICONS={
+  tag:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  bar:'<line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="5"/><line x1="18" y1="20" x2="18" y2="9"/><line x1="3" y1="20" x2="21" y2="20"/>',
+  more:'<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
+  download:'<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
+  table:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
+  upload:'<path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 3h14"/>',
+  reset:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v5h-5"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>'
+};
+function initIcons(){ document.querySelectorAll('.ic[data-icon]').forEach(e=>{ e.innerHTML=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[e.dataset.icon]||''}</svg>`; }); }
+
 /* ================= Modal utils ================= */
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 function esc(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }));
+document.querySelectorAll('.overlay').forEach(o=>{
+  let downOnBackdrop=false;
+  o.addEventListener('mousedown',e=>{ downOnBackdrop = (e.target===o); });
+  o.addEventListener('click',e=>{ if(e.target===o && downOnBackdrop) o.classList.remove('open'); });
+});
 
 /* ================= Seed data ================= */
 function seed(){
@@ -722,6 +931,7 @@ function seed(){
   window.addEventListener('mouseup',()=>{ if(!drag)return; drag=false; grip.classList.remove('active'); document.body.style.userSelect=''; localStorage.setItem('roadmap_leftW',getComputedStyle(gantt).getPropertyValue('--leftW').trim()); });
 })();
 
+initIcons();
 render();
 </script>
 </body>
