@@ -45,6 +45,9 @@
   .strategyTabs{display:flex;gap:6px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
   .tab{padding:6px 14px;border-radius:8px 8px 0 0;background:var(--panel2);border:1px solid var(--line);border-bottom:none;cursor:pointer;color:var(--muted);position:relative;top:1px}
   .tab.active{background:var(--bg);color:var(--text);border-color:var(--accent);border-bottom:1px solid var(--bg)}
+  .tab .tabName{cursor:pointer}
+  .tab.dragging{opacity:.4}
+  .tab.dropTarget{box-shadow:inset 2px 0 0 var(--accent)}
   .tabEdit{background:var(--bg);border:1px solid var(--accent);border-radius:5px;color:var(--text);padding:2px 6px;font:inherit;width:180px;outline:none}
   .tab .x{margin-left:8px;opacity:.5}
   .tab .x:hover{opacity:1;color:var(--crit)}
@@ -67,22 +70,35 @@
   .grip{position:absolute;top:0;bottom:0;left:var(--leftW);width:7px;margin-left:-3px;cursor:col-resize;z-index:40}
   .grip:hover,.grip.active{background:rgba(79,140,255,.45)}
 
-  .col-name{flex:1}
-  .col-meta{width:120px}
-  .col-start{width:80px}
-  .col-dur{width:44px;text-align:right}
-  .g-group{height:34px;display:flex;align-items:center;padding:0 8px;background:var(--panel2);color:var(--accent);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--line);box-sizing:border-box}
+  /* Колонки: имя приоритетно (не пропадает при сужении), мета/дата ужимаются первыми */
+  .col-name{flex:1 1 auto;min-width:64px}
+  .col-meta{flex:0 2 112px;width:112px;min-width:0}
+  .col-start{flex:0 1 76px;width:76px;min-width:0}
+  .col-dur{flex:0 0 40px;width:40px;text-align:right}
+  .g-group{height:34px;display:flex;align-items:center;gap:4px;padding:0 8px;background:var(--panel2);color:var(--accent);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-top:1px solid var(--line);box-sizing:border-box}
+  .g-group.dropTarget{box-shadow:inset 0 2px 0 var(--accent)}
+  .g-group .ghandle{cursor:grab;color:var(--muted);opacity:.6;flex:none;font-size:12px;letter-spacing:-2px;padding-right:2px}
+  .g-group .ghandle:hover{opacity:1;color:var(--accent)}
+  .g-group .gname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default}
+  .g-group .gname[title]{cursor:text}
+  .g-group .gcount{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400;flex:none}
+  .g-group .gspacer{flex:1}
+  .g-group .gjira{flex:none;padding:0 6px;border-radius:4px;background:rgba(79,140,255,.15);border:1px solid var(--line);color:var(--accent);font-size:10px;font-weight:700;text-decoration:none;white-space:nowrap;text-transform:none;letter-spacing:0}
+  .g-group .gjira:hover{background:var(--accent);color:#fff}
+  .g-group .gjira-edit{flex:none;background:transparent;border:none;color:var(--muted);cursor:pointer;padding:2px;line-height:1;border-radius:4px;font-size:12px}
+  .g-group .gjira-edit:hover{color:var(--accent);background:#232c3e}
+  .g-group .gedit{background:var(--panel);border:1px solid var(--accent);border-radius:5px;color:var(--text);padding:1px 5px;font:inherit;text-transform:none;letter-spacing:0;width:160px;outline:none}
   .g-task{height:34px;display:flex;align-items:center;border-bottom:1px solid var(--line);cursor:pointer;box-sizing:border-box}
   .g-task:hover{background:#1c2434}
   .g-task.crit{box-shadow:inset 3px 0 0 var(--crit)}
   .g-task>div{padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .g-name{flex:1;min-width:0;display:flex;align-items:center}
+  .g-name{flex:1 1 auto;min-width:64px;display:flex;align-items:center}
   .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .g-meta{width:120px;color:var(--muted);font-size:11px}
-  .g-start{width:80px;color:var(--muted);font-size:11px}
-  .g-dur{width:44px;text-align:right;color:var(--muted);font-size:11px}
-  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
-  .jira{flex-shrink:0;margin-left:6px;padding:0 6px;border-radius:4px;background:rgba(79,140,255,.15);border:1px solid var(--line);color:var(--accent);font-size:10px;font-weight:600;text-decoration:none;white-space:nowrap}
+  .g-meta{flex:0 2 112px;width:112px;min-width:0;color:var(--muted);font-size:11px}
+  .g-start{flex:0 1 76px;width:76px;min-width:0;color:var(--muted);font-size:11px}
+  .g-dur{flex:0 0 40px;width:40px;text-align:right;color:var(--muted);font-size:11px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle;flex:none}
+  .jira{flex-shrink:0;margin-left:6px;max-width:78px;overflow:hidden;text-overflow:ellipsis;padding:0 6px;border-radius:4px;background:rgba(79,140,255,.15);border:1px solid var(--line);color:var(--accent);font-size:10px;font-weight:600;text-decoration:none;white-space:nowrap}
   .jira:hover{background:var(--accent);color:#fff}
   .chip{display:inline-block;padding:1px 7px;border-radius:20px;background:var(--panel2);color:var(--muted);font-size:11px}
   .mini{color:var(--muted);font-size:11px}
@@ -185,7 +201,7 @@
   <div class="legend">
     <span><i class="sw" style="background:var(--accent)"></i> Обычная задача</span>
     <span><i class="sw" style="background:var(--crit)"></i> Критический путь (нельзя сдвигать — двигает релиз)</span>
-    <span><i class="sw" style="background:var(--milestone);transform:rotate(45deg)"></i> Веха</span>
+    <span><i class="sw" style="width:11px;height:11px;border-radius:2px;background:var(--milestone);transform:rotate(45deg)"></i> Веха</span>
     <span><i class="sw" style="background:var(--done)"></i> Выполнено</span>
     <span class="mini">Клик по задаче — редактировать · Стрелки — зависимости</span>
   </div>
@@ -386,33 +402,124 @@ function renderTabs(){
     };
     nameSpan.ondblclick=(e)=>{ e.stopPropagation(); if(clickTimer){ clearTimeout(clickTimer); clickTimer=null; } beginRename(s.id,nameSpan); };
     const x=t.querySelector('.x'); if(x) x.onclick=(e)=>{ e.stopPropagation(); if(confirm('Удалить стратегию «'+s.name+'»?')){ state.strategies=state.strategies.filter(z=>z.id!==s.id); if(state.active===s.id) state.active=state.strategies[0].id; render(); } };
+    // Перетаскивание вкладок для смены порядка (#8)
+    t.draggable=true;
+    t.addEventListener('dragstart',e=>{ dragTabId=s.id; e.dataTransfer.effectAllowed='move'; t.classList.add('dragging'); });
+    t.addEventListener('dragend',()=>{ dragTabId=null; document.querySelectorAll('.tab').forEach(z=>z.classList.remove('dragging','dropTarget')); });
+    t.addEventListener('dragover',e=>{ if(dragTabId&&dragTabId!==s.id){ e.preventDefault(); if(!t.classList.contains('dropTarget')){ el.querySelectorAll('.tab.dropTarget').forEach(z=>z.classList.remove('dropTarget')); t.classList.add('dropTarget'); } } });
+    t.addEventListener('drop',e=>{ e.preventDefault(); t.classList.remove('dropTarget'); if(dragTabId&&dragTabId!==s.id) reorderStrategy(dragTabId,s.id); dragTabId=null; });
     el.appendChild(t);
   });
   const add=document.createElement('button'); add.className='btn ghost'; add.textContent='+ Стратегия'; add.onclick=openStrategy;
   el.appendChild(add);
 }
+// Смена порядка стратегий перетаскиванием вкладок (#8)
+let dragTabId=null;
+function reorderStrategy(fromId,toId){
+  if(fromId===toId) return;
+  const arr=state.strategies;
+  const fi=arr.findIndex(s=>s.id===fromId), tiOrig=arr.findIndex(s=>s.id===toId);
+  if(fi<0||tiOrig<0) return;
+  const [m]=arr.splice(fi,1);
+  let ti=arr.findIndex(s=>s.id===toId);
+  if(fi<tiOrig) ti+=1; // тянем вправо — встаём ПОСЛЕ цели (иначе не попасть на крайнюю правую позицию)
+  arr.splice(ti,0,m);
+  render();
+}
 // Инлайн-переименование стратегии по двойному клику на вкладке
 function beginRename(id,span){
   const s=state.strategies.find(z=>z.id===id); if(!s) return;
-  const inp=document.createElement('input'); inp.className='tabEdit'; inp.value=s.name;
+  const par=span.closest('.tab'); if(par) par.draggable=false;
+  const inp=document.createElement('input'); inp.className='tabEdit'; inp.value=s.name; inp.draggable=false;
+  inp.addEventListener('mousedown',e=>e.stopPropagation());
   span.replaceWith(inp); inp.focus(); inp.select();
   let done=false;
   const commit=()=>{ if(done)return; done=true; const v=inp.value.trim(); if(v) s.name=v; render(); };
   inp.onkeydown=(e)=>{ if(e.key==='Enter'){ e.preventDefault(); commit(); } else if(e.key==='Escape'){ done=true; render(); } };
   inp.onblur=commit;
 }
+// Инлайн-переименование всей группы по двойному клику на заголовке (#9)
+function beginGroupRename(name,span){
+  const par=span.closest('.g-group'); if(par) par.draggable=false;
+  const inp=document.createElement('input'); inp.className='gedit'; inp.value=name; inp.draggable=false;
+  inp.addEventListener('mousedown',e=>e.stopPropagation());
+  span.replaceWith(inp); inp.focus(); inp.select();
+  let done=false;
+  const commit=()=>{ if(done)return; done=true; const v=inp.value.trim(); if(v&&v!==name) renameGroup(name,v); else render(); };
+  inp.onkeydown=(e)=>{ if(e.key==='Enter'){ e.preventDefault(); commit(); } else if(e.key==='Escape'){ done=true; render(); } };
+  inp.onblur=commit;
+}
+// Перетаскивание заголовков групп для смены очередности (#10)
+let dragGroupName=null;
+function wireGroupDrag(el,name){
+  el.draggable=true;
+  el.addEventListener('dragstart',e=>{ dragGroupName=name; e.dataTransfer.effectAllowed='move'; el.style.opacity='.4'; });
+  el.addEventListener('dragend',()=>{ dragGroupName=null; el.style.opacity=''; document.querySelectorAll('.g-group.dropTarget').forEach(x=>x.classList.remove('dropTarget')); });
+  el.addEventListener('dragover',e=>{ if(dragGroupName&&dragGroupName!==name){ e.preventDefault(); if(!el.classList.contains('dropTarget')){ document.querySelectorAll('.g-group.dropTarget').forEach(x=>x.classList.remove('dropTarget')); el.classList.add('dropTarget'); } } });
+  el.addEventListener('drop',e=>{ e.preventDefault(); el.classList.remove('dropTarget'); if(dragGroupName&&dragGroupName!==name) reorderGroup(dragGroupName,name); dragGroupName=null; });
+}
 
+// Имя группы задачи: пустая группа по умолчанию попадает в «Другое» (#11)
+const DEFAULT_GROUP='Другое';
+function groupOf(t){ return (t.group&&t.group.trim())||DEFAULT_GROUP; }
+// Метаданные групп стратегии: strat.groups=[{name,jira}], порядок массива = порядок отображения (#10, #12).
+// Синхронизируем с фактическими группами задач: добавляем новые (по ранней дате, «Другое» — в конец),
+// убираем исчезнувшие, сохраняем ручной порядок и JIRA существующих.
+function syncGroups(strat,eff){
+  strat.groups=strat.groups||[];
+  const map={}; strat.tasks.forEach(t=>{ (map[groupOf(t)]=map[groupOf(t)]||[]).push(t); });
+  const present=Object.keys(map);
+  const earliest={}; present.forEach(n=>{ earliest[n]=Math.min(...map[n].map(t=>+eff[t.id].start)); });
+  let ordered=strat.groups.map(g=>g.name).filter(n=>present.includes(n));
+  const missing=present.filter(n=>!ordered.includes(n))
+    .sort((a,b)=> (a===DEFAULT_GROUP?1:0)-(b===DEFAULT_GROUP?1:0) || earliest[a]-earliest[b]);
+  ordered=[...ordered,...missing];
+  strat.groups=ordered.map(n=>{ const ex=strat.groups.find(g=>g.name===n); return {name:n,jira:ex?ex.jira||'':''}; });
+  return {order:ordered,map};
+}
 // Единый порядок строк для списка И для Гантта — чтобы они не разъезжались.
-// Возвращает плоский массив строк: {type:'group',name,count} либо {type:'task',task}.
+// Возвращает плоский массив строк: {type:'group',name,jira,count} либо {type:'task',task}.
 function buildRows(tasks){
+  const strat=activeStrategy();
   const eff=resolveDates(tasks);
-  const sorted=[...tasks].sort((a,b)=> eff[a.id].start-eff[b.id].start);
-  const groups=[];
-  sorted.forEach(t=>{ const g=t.group||''; let e=groups.find(x=>x.name===g); if(!e){ e={name:g,items:[]}; groups.push(e); } e.items.push(t); });
-  groups.sort((a,b)=> (a.name?0:1)-(b.name?0:1)); // безымянная группа — в конец
+  const {order,map}=syncGroups(strat,eff);
   const rows=[];
-  groups.forEach(g=>{ g.items=orderMilestones(g.items); if(g.name) rows.push({type:'group',name:g.name,count:g.items.length}); g.items.forEach(t=>rows.push({type:'task',task:t})); });
+  order.forEach(name=>{
+    let items=map[name]; if(!items||!items.length) return;
+    items=[...items].sort((a,b)=> eff[a.id].start-eff[b.id].start);
+    items=orderMilestones(items);
+    const meta=strat.groups.find(g=>g.name===name)||{};
+    rows.push({type:'group',name,jira:meta.jira||'',count:items.length});
+    items.forEach(t=>rows.push({type:'task',task:t}));
+  });
   return rows;
+}
+// Переименование всей группы одним действием (#9): переносит все задачи в новое имя
+function renameGroup(oldName,newName){
+  const strat=activeStrategy();
+  const target=(newName||'').trim()||DEFAULT_GROUP;
+  if(target===oldName) return;
+  strat.tasks.forEach(t=>{ if(groupOf(t)===oldName) t.group=target; });
+  const g=(strat.groups||[]).find(x=>x.name===oldName); if(g) g.name=target;
+  render();
+}
+// Изменение очередности групп перетаскиванием заголовка (#10)
+function reorderGroup(from,to){
+  if(from===to) return;
+  const strat=activeStrategy(); const g=strat.groups||[];
+  const fi=g.findIndex(x=>x.name===from), tiOrig=g.findIndex(x=>x.name===to);
+  if(fi<0||tiOrig<0) return;
+  const [m]=g.splice(fi,1);
+  let ti=g.findIndex(x=>x.name===to);
+  if(fi<tiOrig) ti+=1; // тянем вниз — встаём ПОСЛЕ цели (иначе не попасть на самую нижнюю позицию)
+  g.splice(ti,0,m);
+  render();
+}
+// JIRA-ключ для группы (#12)
+function editGroupJira(name){
+  const strat=activeStrategy(); const g=(strat.groups||[]).find(x=>x.name===name); if(!g) return;
+  const v=prompt('JIRA-ключ для группы «'+name+'» (напр. PROJ-100). Пусто — убрать:',g.jira||'');
+  if(v===null) return; g.jira=v.trim(); render();
 }
 // При перетаскивании отдаём зафиксированный порядок, иначе — пересчитанный
 function displayRows(tasks){ return frozenRows || buildRows(tasks); }
@@ -436,8 +543,19 @@ function renderTasks(){
   const host=document.getElementById('taskRows'); host.innerHTML='';
   displayRows(strat.tasks).forEach(r=>{
     if(r.type==='group'){
-      const d=document.createElement('div'); d.className='g-group';
-      d.innerHTML=`▸ ${esc(r.name)} <span class="mini" style="margin-left:6px;text-transform:none;letter-spacing:0">· ${r.count}</span>`;
+      const d=document.createElement('div'); d.className='g-group'; d.dataset.group=r.name;
+      const jiraHtml=r.jira
+        ? `<a class="gjira" href="#" title="Открыть группу в JIRA" onclick="openJira('${esc(r.jira)}',event)">${esc(r.jira)}</a>`
+        : '';
+      d.innerHTML=`<span class="ghandle" title="Перетащите, чтобы изменить порядок групп">⋮⋮</span>`+
+        `<span class="gname" title="Двойной клик — переименовать группу">▸ ${esc(r.name)}</span>`+
+        `<span class="gcount">· ${r.count}</span><span class="gspacer"></span>`+
+        jiraHtml+
+        `<button class="gjira-edit" title="JIRA для группы">🔗</button>`;
+      const nameSpan=d.querySelector('.gname');
+      nameSpan.ondblclick=(e)=>{ e.stopPropagation(); beginGroupRename(r.name,nameSpan); };
+      d.querySelector('.gjira-edit').onclick=(e)=>{ e.stopPropagation(); editGroupJira(r.name); };
+      wireGroupDrag(d,r.name);
       host.appendChild(d); return;
     }
     const t=r.task;
@@ -517,7 +635,7 @@ function renderGantt(){
     const y=i*rowH;
     svg+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="rgba(79,140,255,0.10)"/>`;
     svg+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--line)"/>`;
-    svg+=`<text x="8" y="${y+rowH/2+4}" style="fill:var(--accent);font-size:11px;font-weight:700;letter-spacing:.5px">▸ ${esc(r.name.toUpperCase())} · ${r.count}</text>`;
+    svg+=`<text x="8" y="${y+rowH/2+4}" style="fill:var(--accent);font-size:11px;font-weight:700;letter-spacing:.5px">▸ ${esc(r.name.toUpperCase())} · ${r.count}${r.jira?'  ['+esc(r.jira)+']':''}</text>`;
   });
 
   // dependency arrows (по эффективным датам)
@@ -564,7 +682,7 @@ function openTask(id){
   document.getElementById('f_name').value = t?t.name:'';
   document.getElementById('f_group').value = t?(t.group||''):'';
   const gl=document.getElementById('groupList'); gl.innerHTML='';
-  [...new Set(strat.tasks.map(x=>x.group).filter(Boolean))].forEach(g=>gl.innerHTML+=`<option value="${esc(g)}">`);
+  [...new Set(strat.tasks.map(x=>groupOf(x)))].forEach(g=>gl.innerHTML+=`<option value="${esc(g)}">`);
   document.getElementById('f_assignee').value = t?t.assignee:'';
   document.getElementById('f_jira').value = t?(t.jira||''):'';
   selColor = (t&&t.color)?t.color:'#4f8cff'; renderSwatches();
@@ -592,7 +710,7 @@ function renderDeps(filter){
                    .sort((a,b)=> eff[a.id].start-eff[b.id].start);
   if(!cand.length){ box.innerHTML='<span class="mini">Ничего не найдено</span>'; return; }
   const groups=[];
-  cand.forEach(x=>{ const g=x.group||'Без группы'; let e=groups.find(z=>z.name===g); if(!e){ e={name:g,items:[]}; groups.push(e); } e.items.push(x); });
+  cand.forEach(x=>{ const g=groupOf(x); let e=groups.find(z=>z.name===g); if(!e){ e={name:g,items:[]}; groups.push(e); } e.items.push(x); });
   let html='';
   groups.forEach(g=>{
     html+=`<div class="depGroup">${esc(g.name)}</div>`;
@@ -710,7 +828,7 @@ function exportXLSX(){
   const data=[];
   buildRows(strat.tasks).forEach(r=>{ if(r.type!=='task') return; const t=r.task;
     const deps=(t.deps||[]).map(d=>byId[d]?byId[d].name:'').filter(Boolean).join(' | ');
-    data.push([t.name, t.group||'', t.assignee||'', fmt(eff[t.id].start), t.milestone?'':Number(t.dur), t.milestone?'':Number(t.progress), t.jira||'', t.milestone?'Веха':'Задача', deps]);
+    data.push([t.name, groupOf(t), t.assignee||'', fmt(eff[t.id].start), t.milestone?'':Number(t.dur), t.milestone?'':Number(t.progress), t.jira||'', t.milestone?'Веха':'Задача', deps]);
   });
   const blob=buildXlsx(headers,data,[40,20,20,12,7,11,16,10,44]);
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -797,7 +915,7 @@ function buildExportSVG(){
   }
   if(dl>=start&&dl<=end){ const dx=xOf(dl)+dayW/2; s+=`<line x1="${dx}" y1="22" x2="${dx}" y2="${H}" stroke="#ffb020" stroke-width="1.5" stroke-dasharray="5 3"/>`; }
   rows.forEach((r,i)=>{ const y=headH+i*rowH;
-    if(r.type==='group'){ s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="rgba(79,140,255,0.10)"/><text x="8" y="${y+rowH/2+4}" fill="#4f8cff" font-size="11" font-weight="700">${esc('▸ '+r.name.toUpperCase()+' · '+r.count)}</text>`; return; }
+    if(r.type==='group'){ s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="rgba(79,140,255,0.10)"/><text x="8" y="${y+rowH/2+4}" fill="#4f8cff" font-size="11" font-weight="700">${esc('▸ '+r.name.toUpperCase()+' · '+r.count+(r.jira?'  ['+r.jira+']':''))}</text>`; return; }
     const t=r.task, e=eff[t.id], isCrit=critical.has(t.id), over=e.end>dl;
     s+=`<line x1="0" y1="${y+rowH}" x2="${W}" y2="${y+rowH}" stroke="#2a3347"/>`;
     s+=`<text x="10" y="${y+rowH/2+4}" fill="#e6ebf5" font-size="12">${esc((t.milestone?'◆ ':'')+clip(t.name,30))}</text>`;
