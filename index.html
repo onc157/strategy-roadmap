@@ -90,7 +90,7 @@
   .g-group .gedit{background:var(--panel);border:1px solid var(--accent);border-radius:5px;color:var(--text);padding:1px 5px;font:inherit;text-transform:none;letter-spacing:0;width:160px;outline:none}
   .g-task{height:34px;display:flex;align-items:center;border-bottom:1px solid var(--line);cursor:pointer;box-sizing:border-box}
   .g-task:hover{background:#1c2434}
-  .g-task.crit{box-shadow:inset 3px 0 0 var(--crit)}
+  .g-task.over{box-shadow:inset 3px 0 0 var(--crit)}
   .g-task>div{padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .g-name{flex:1 1 auto;min-width:64px;display:flex;align-items:center}
   .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -200,7 +200,7 @@
 
   <div class="legend">
     <span><i class="sw" style="background:var(--accent)"></i> Обычная задача</span>
-    <span><i class="sw" style="background:var(--crit)"></i> Критический путь (нельзя сдвигать — двигает релиз)</span>
+    <span><i class="sw" style="background:var(--crit)"></i> За дедлайном ⚠ (задача финиширует позже линии дедлайна)</span>
     <span><i class="sw" style="width:11px;height:11px;border-radius:2px;background:var(--milestone);transform:rotate(45deg)"></i> Веха</span>
     <span><i class="sw" style="background:var(--done)"></i> Выполнено</span>
     <span class="mini">Клик по задаче — редактировать · Стрелки — зависимости</span>
@@ -544,7 +544,7 @@ function orderMilestones(items){
 
 function renderTasks(){
   const strat=activeStrategy();
-  const {critical,eff}=computeSchedule(strat.tasks);
+  const {eff}=computeSchedule(strat.tasks);
   const dl=parseDate(state.deadline);
   const host=document.getElementById('taskRows'); host.innerHTML='';
   displayRows(strat.tasks).forEach(r=>{
@@ -567,7 +567,7 @@ function renderTasks(){
     const t=r.task;
     const over=eff[t.id].end>dl;
     const auto=t.deps&&t.deps.length;
-    const d=document.createElement('div'); d.className='g-task'+(critical.has(t.id)?' crit':'');
+    const d=document.createElement('div'); d.className='g-task'+(over?' over':'');
     d.innerHTML=`<div class="g-name"><span class="nm"><span class="dot" style="background:${t.progress>=100?'var(--done)':t.color}"></span>${t.milestone?'◆ ':''}${esc(t.name)}${over?' <span title="За дедлайном" style="color:var(--crit)">⚠</span>':''}</span>${t.jira?`<a class="jira" href="#" title="${esc(t.jira)} — открыть в JIRA" onclick="openJira('${esc(t.jira)}',event)">${esc(jiraNum(t.jira))}</a>`:''}</div>
       <div class="g-meta">${esc(t.assignee||'—')}</div>
       <div class="g-start" title="${auto?'Авто (от зависимостей)':'Задано вручную'}">${auto?'⛓ ':''}${fmt(eff[t.id].start)}</div>
@@ -585,7 +585,7 @@ function renderGantt(){
   const body=document.getElementById('ganttInner');
   const head=document.getElementById('ganttHead');
   if(!strat.tasks.length){ head.innerHTML=''; body.innerHTML='<div style="padding:40px;color:var(--muted)">Нет задач. Нажмите «+ Задача».</div>'; return; }
-  const {minStart,maxEnd,critical,eff}=computeSchedule(strat.tasks);
+  const {minStart,maxEnd,eff}=computeSchedule(strat.tasks);
   const rows=displayRows(strat.tasks); // тот же порядок и группы, что и в списке слева
   const zoom=state.zoom, dayW=ZOOM[zoom]||24, rowH=34, headH=48;
   const dl=parseDate(state.deadline);
@@ -657,16 +657,16 @@ function renderGantt(){
   rows.forEach((r,i)=>{
     if(r.type!=='task') return;
     const t=r.task, e=eff[t.id];
-    const y=i*rowH+6, h=rowH-14, isCrit=critical.has(t.id), over=e.end>dl;
+    const y=i*rowH+6, h=rowH-14, over=e.end>dl;
     if(t.milestone){
       const cx=xOf(e.start)+dayW/2, cy=y+h/2, rr=9;
       const mColor=t.progress>=100?'var(--done)':'var(--milestone)';
-      svg+=`<polygon data-bar="${t.id}" points="${cx},${cy-rr} ${cx+rr},${cy} ${cx},${cy+rr} ${cx-rr},${cy}" fill="${mColor}" stroke="${over?'var(--crit)':(isCrit?'var(--crit)':'#0f1420')}" stroke-width="2" style="cursor:grab"/>`;
+      svg+=`<polygon data-bar="${t.id}" points="${cx},${cy-rr} ${cx+rr},${cy} ${cx},${cy+rr} ${cx-rr},${cy}" fill="${mColor}" stroke="${over?'var(--crit)':'#0f1420'}" stroke-width="2" style="cursor:grab"/>`;
       svg+=`<text x="${cx+rr+6}" y="${cy+4}" class="barLabel" style="fill:${mColor}">${esc(t.name)}${t.progress>=100?' ✓':''}${over?' ⚠':''}</text>`;
     } else {
       const x=xOf(e.start), cols=Math.round((e.end-e.start)/86400000)+1;
       const w=Math.max(cols*dayW, Math.max(dayW*0.6,5));
-      const barColor=isCrit?'var(--crit)':t.color;
+      const barColor=t.color;
       svg+=`<rect data-bar="${t.id}" x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${barColor}" opacity=".35" style="cursor:grab"/>`;
       if(t.progress>0) svg+=`<rect x="${x}" y="${y}" width="${w*Math.min(t.progress,100)/100}" height="${h}" rx="5" fill="${t.progress>=100?'var(--done)':barColor}" style="pointer-events:none"/>`;
       svg+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="none" stroke="${over?'var(--crit)':barColor}" stroke-width="1.5" style="pointer-events:none"/>`;
@@ -896,7 +896,7 @@ function zipStore(files){ // ZIP без сжатия (store) — Excel это п
 function clip(s,n){ s=s||''; return s.length>n ? s.slice(0,n-1)+'…' : s; }
 function buildExportSVG(){
   const strat=activeStrategy();
-  const {minStart,maxEnd,critical,eff}=computeSchedule(strat.tasks);
+  const {minStart,maxEnd,eff}=computeSchedule(strat.tasks);
   const rows=buildRows(strat.tasks);
   if(!rows.length) return null;
   const zoom=state.zoom, dayW=ZOOM[zoom]||24, rowH=34, headH=48, leftW=300;
@@ -922,7 +922,7 @@ function buildExportSVG(){
   if(dl>=start&&dl<=end){ const dx=xOf(dl)+dayW/2; s+=`<line x1="${dx}" y1="22" x2="${dx}" y2="${H}" stroke="#ffb020" stroke-width="1.5" stroke-dasharray="5 3"/>`; }
   rows.forEach((r,i)=>{ const y=headH+i*rowH;
     if(r.type==='group'){ s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="rgba(79,140,255,0.10)"/><text x="8" y="${y+rowH/2+4}" fill="#4f8cff" font-size="11" font-weight="700">${esc('▸ '+r.name.toUpperCase()+' · '+r.count+(r.jira?'  ['+r.jira+']':''))}</text>`; return; }
-    const t=r.task, e=eff[t.id], isCrit=critical.has(t.id), over=e.end>dl;
+    const t=r.task, e=eff[t.id], over=e.end>dl;
     s+=`<line x1="0" y1="${y+rowH}" x2="${W}" y2="${y+rowH}" stroke="#2a3347"/>`;
     s+=`<text x="10" y="${y+rowH/2+4}" fill="#e6ebf5" font-size="12">${esc((t.milestone?'◆ ':'')+clip(t.name,30))}</text>`;
     if(t.assignee) s+=`<text x="${leftW-8}" y="${y+rowH/2+4}" text-anchor="end" fill="#8b97ad" font-size="10">${esc(clip(t.assignee,16))}</text>`;
@@ -930,7 +930,7 @@ function buildExportSVG(){
     if(t.milestone){ const cx=xOf(e.start)+dayW/2, cy=by+h/2, rr=8, mc=t.progress>=100?'#2ecc71':'#ffb020';
       s+=`<polygon points="${cx},${cy-rr} ${cx+rr},${cy} ${cx},${cy+rr} ${cx-rr},${cy}" fill="${mc}"/>`;
       s+=`<text x="${cx+rr+5}" y="${cy+4}" fill="${mc}" font-size="11">${esc(t.name+(t.progress>=100?' ✓':''))}</text>`;
-    } else { const x=xOf(e.start), cols=Math.round((e.end-e.start)/86400000)+1, w=Math.max(cols*dayW,5), bc=isCrit?'#ff5470':t.color;
+    } else { const x=xOf(e.start), cols=Math.round((e.end-e.start)/86400000)+1, w=Math.max(cols*dayW,5), bc=t.color;
       s+=`<rect x="${x}" y="${by}" width="${w}" height="${h}" rx="5" fill="${bc}" opacity="0.35"/>`;
       if(t.progress>0) s+=`<rect x="${x}" y="${by}" width="${w*Math.min(t.progress,100)/100}" height="${h}" rx="5" fill="${t.progress>=100?'#2ecc71':bc}"/>`;
       s+=`<rect x="${x}" y="${by}" width="${w}" height="${h}" rx="5" fill="none" stroke="${over?'#ff5470':bc}" stroke-width="1.5"/>`;
