@@ -305,6 +305,9 @@ function load(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)); }catch
 /* ================= Date helpers (working days) ================= */
 function parseDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
 function fmt(dt){ return dt.toISOString().slice(0,10); }
+// Метка «дата_время» для имён файлов: локальное время, без запрещённых в имени символов (:)
+function stampNow(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+'-'+p(d.getMinutes())+'-'+p(d.getSeconds()); }
 function addWorkDays(dt, n){ // add n working days, skip Sat/Sun
   const d=new Date(dt); let added=0;
   while(added<n){ d.setDate(d.getDate()+1); const wd=d.getDay(); if(wd!==0&&wd!==6) added++; }
@@ -462,6 +465,9 @@ function wireGroupDrag(el,name){
 // Имя группы задачи: пустая группа по умолчанию попадает в «Другое» (#11)
 const DEFAULT_GROUP='Другое';
 function groupOf(t){ return (t.group&&t.group.trim())||DEFAULT_GROUP; }
+// В списке на карточке показываем только номер задачи (часть после последнего дефиса),
+// напр. SDFKFSF-123 -> 123. В модалке остаётся полный ключ. Полный ключ — в title и в ссылке.
+function jiraNum(key){ const s=String(key||'').trim(); const i=s.lastIndexOf('-'); return i>=0?s.slice(i+1):s; }
 // Метаданные групп стратегии: strat.groups=[{name,jira}], порядок массива = порядок отображения (#10, #12).
 // Синхронизируем с фактическими группами задач: добавляем новые (по ранней дате, «Другое» — в конец),
 // убираем исчезнувшие, сохраняем ручной порядок и JIRA существующих.
@@ -562,7 +568,7 @@ function renderTasks(){
     const over=eff[t.id].end>dl;
     const auto=t.deps&&t.deps.length;
     const d=document.createElement('div'); d.className='g-task'+(critical.has(t.id)?' crit':'');
-    d.innerHTML=`<div class="g-name"><span class="nm"><span class="dot" style="background:${t.progress>=100?'var(--done)':t.color}"></span>${t.milestone?'◆ ':''}${esc(t.name)}${over?' <span title="За дедлайном" style="color:var(--crit)">⚠</span>':''}</span>${t.jira?`<a class="jira" href="#" title="Открыть в JIRA" onclick="openJira('${esc(t.jira)}',event)">${esc(t.jira)}</a>`:''}</div>
+    d.innerHTML=`<div class="g-name"><span class="nm"><span class="dot" style="background:${t.progress>=100?'var(--done)':t.color}"></span>${t.milestone?'◆ ':''}${esc(t.name)}${over?' <span title="За дедлайном" style="color:var(--crit)">⚠</span>':''}</span>${t.jira?`<a class="jira" href="#" title="${esc(t.jira)} — открыть в JIRA" onclick="openJira('${esc(t.jira)}',event)">${esc(jiraNum(t.jira))}</a>`:''}</div>
       <div class="g-meta">${esc(t.assignee||'—')}</div>
       <div class="g-start" title="${auto?'Авто (от зависимостей)':'Задано вручную'}">${auto?'⛓ ':''}${fmt(eff[t.id].start)}</div>
       <div class="g-dur">${t.milestone?'—':t.dur}</div>`;
@@ -817,7 +823,7 @@ function openCompare(){
 function exportJSON(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
-  a.download='roadmap-'+fmt(new Date())+'.json'; a.click();
+  a.download='roadmap-'+stampNow()+'.json'; a.click();
 }
 /* ---- XLSX (без библиотек: собираем OOXML + ZIP вручную) ---- */
 function exportXLSX(){
