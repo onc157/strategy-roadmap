@@ -33,7 +33,8 @@
   .zb:last-child{border-right:none}
   .zb.active{background:var(--accent);color:#fff}
   .dl{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
-  .dl input{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:0 8px;height:34px;color:var(--text)}
+  .dl input,.dl select{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:0 8px;height:34px;color:var(--text)}
+  .chip.dirty{background:rgba(255,84,112,.15);color:var(--crit);border:1px solid var(--crit);font-weight:600}
   input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.75);cursor:pointer}
   .menu{position:relative}
   .menu.open .menuList{display:block}
@@ -79,6 +80,8 @@
   .g-group.dropTarget{box-shadow:inset 0 2px 0 var(--accent)}
   .g-group .ghandle{cursor:grab;color:var(--muted);opacity:.6;flex:none;font-size:12px;letter-spacing:-2px;padding-right:2px}
   .g-group .ghandle:hover{opacity:1;color:var(--accent)}
+  .g-group .gcaret{cursor:pointer;flex:none;width:14px;text-align:center;color:var(--accent);user-select:none}
+  .g-group .gcaret:hover{color:var(--text)}
   .g-group .gname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default}
   .g-group .gname[title]{cursor:text}
   .g-group .gcount{color:var(--muted);text-transform:none;letter-spacing:0;font-weight:400;flex:none}
@@ -136,6 +139,15 @@
   .depName{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .depMeta{flex-shrink:0;white-space:nowrap}
   .modalActions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+  .editList{display:flex;flex-direction:column;gap:6px}
+  .editRow{display:flex;gap:6px;align-items:center}
+  .editRow input[type=text],.editRow input[type=date]{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 8px;color:var(--text)}
+  .editRow input[type=color]{width:34px;height:34px;flex:none;padding:0;border:1px solid var(--line);border-radius:7px;background:var(--panel2);cursor:pointer}
+  .editRow .del{flex:none;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 6px;line-height:1}
+  .editRow .del:hover{color:var(--crit)}
+  .miniSwatches{display:flex;gap:4px;flex:none;align-items:center;flex-wrap:wrap;width:116px}
+  .msw{width:16px;height:16px;border-radius:50%;border:none;cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+  .msw.on{outline:2px solid var(--text);outline-offset:1px}
 
   .cmpGrid{display:flex;gap:14px;flex-wrap:wrap}
   .cmpCard{flex:1;min-width:200px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px}
@@ -151,7 +163,9 @@
   <header>
     <h1>🗺️ Roadmap Creator</h1>
     <span class="chip" id="projSpan"></span>
+    <span class="chip dirty" id="dirtyFlag" title="Есть изменения, не выгруженные в JSON" style="display:none">● Не сохранено в JSON</span>
     <div class="spacer"></div>
+    <label class="dl" id="roleFilterWrap" style="display:none">Ответственный (Роль) <select id="roleFilter" onchange="setRoleFilter(this.value)"></select></label>
     <div class="zoom">
       <button class="zb" data-z="day" onclick="setZoom('day')">День</button>
       <button class="zb" data-z="week" onclick="setZoom('week')">Неделя</button>
@@ -213,13 +227,14 @@
     <div class="modalHead">
       <h2 id="taskModalTitle">Задача</h2>
       <div class="swatches" id="f_colorSwatches" title="Цвет метки"></div>
+      <span class="hint" id="f_roleColorHint" style="display:none">Цвет задаёт роль</span>
     </div>
     <div class="row2">
       <div class="field" style="flex:7"><label>Название</label><input id="f_name" placeholder="Напр. Проектирование агента-диспетчера"></div>
       <div class="field" style="flex:3"><label>Группа / раздел</label><input id="f_group" list="groupList" placeholder="Напр. Интеграции"><datalist id="groupList"></datalist></div>
     </div>
     <div class="row2">
-      <div class="field"><label>Ответственный</label><input id="f_assignee" placeholder="Имя / роль"></div>
+      <div class="field"><label>Ответственный (роль)</label><select id="f_assignee" onchange="onAssigneeInput()"></select></div>
       <div class="field"><label>JIRA-ключ</label><input id="f_jira" placeholder="Напр. PROJ-123"></div>
     </div>
     <div class="row2">
@@ -272,11 +287,21 @@
 
 <!-- Settings modal -->
 <div class="overlay" id="settingsModal">
-  <div class="modal">
+  <div class="modal" style="width:600px">
     <h2>Настройки</h2>
     <div class="field"><label>Базовый URL JIRA</label>
       <input id="s_jirabase" placeholder="https://jira.company.ru/browse/">
-      <div class="hint">К нему добавляется ключ задачи. Пример: <code>https://jira.company.ru/browse/</code> + <code>PROJ-123</code>. Сохраняется и уходит в экспорт JSON.</div>
+      <div class="hint">К нему добавляется ключ задачи. Пример: <code>https://jira.company.ru/browse/</code> + <code>PROJ-123</code></div>
+    </div>
+    <div class="field"><label>Ответственные (роли)</label>
+      <div class="editList" id="s_roles"></div>
+      <button class="btn" style="align-self:flex-start;margin-top:6px" onclick="addRoleRow()">+ Роль</button>
+      <div class="hint">Роль можно выбрать в поле «Ответственный» карточки. Цвет роли автоматически красит бары её задач; сверху в шапке появляется фильтр.</div>
+    </div>
+    <div class="field"><label>Важные даты на треке</label>
+      <div class="editList" id="s_markers"></div>
+      <button class="btn" style="align-self:flex-start;margin-top:6px" onclick="addMarkerRow()">+ Дата</button>
+      <div class="hint">Вертикальные линии с важными вехами.</div>
     </div>
     <div class="modalActions">
       <button class="btn" onclick="closeModal('settingsModal')">Отмена</button>
@@ -293,13 +318,29 @@ let editingTaskId = null;
 let depSel = new Set(); // выбранные предшественники (хранится отдельно от DOM — переживает фильтрацию)
 let selColor='#4f8cff', selProgress=0;
 let frozenRows=null; // во время перетаскивания порядок строк не пересчитывается (иначе блоки прыгают)
+let dirty=false; // #14: есть изменения данных, не выгруженные в JSON
+let booting=true; // не помечать грязным первый рендер при загрузке
+let savedSnapshot=''; // снимок «значимого» состояния на момент последнего экспорта/импорта/загрузки
 const PALETTE=['#4f8cff','#7c5cff','#38bdf8','#22d3ee','#2ecc71','#a3e635','#ffb020','#ff9f43','#ff5470','#e879f9','#94a3b8','#64748b'];
 const PROGS=[0,25,50,75,100];
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function activeStrategy(){ return state.strategies.find(s=>s.id===state.active); }
 
-function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); refreshDirty(); }
+// #14: «значимый» снимок — только данные плана, без чисто видовых полей
+// (свёрнутость групп, зум, подпись баров, активная вкладка, фильтр по роли).
+function meaningfulSnapshot(){
+  const c=JSON.parse(JSON.stringify(state));
+  delete c.zoom; delete c.barLabel; delete c.active; delete c.roleFilter;
+  (c.strategies||[]).forEach(s=>(s.groups||[]).forEach(g=>{ delete g.collapsed; }));
+  return JSON.stringify(c);
+}
+function markDirty(v){ dirty=v; const el=document.getElementById('dirtyFlag'); if(el) el.style.display=v?'inline-flex':'none'; }
+// Есть ли невыгруженные изменения данных: сравниваем текущий значимый снимок с сохранённым
+function refreshDirty(){ if(booting) return; markDirty(meaningfulSnapshot()!==savedSnapshot); }
+// Зафиксировать текущее состояние как «сохранённое» (после экспорта/импорта/сброса/загрузки)
+function markSaved(){ savedSnapshot=meaningfulSnapshot(); markDirty(false); }
 function load(){ try{ return JSON.parse(localStorage.getItem(STORE_KEY)); }catch(e){ return null; } }
 
 /* ================= Date helpers (working days) ================= */
@@ -376,6 +417,7 @@ function render(){
   state.zoom=state.zoom||'day';
   state.deadline=state.deadline||'2026-09-30';
   state.barLabel=state.barLabel||'assignee';
+  renderRoleFilter();
   renderTabs();
   renderTasks();
   renderGantt();
@@ -385,6 +427,17 @@ function render(){
   const lt=document.getElementById('labelToggleText'); if(lt) lt.textContent=(state.barLabel==='name'?'Имя':'Отв.');
   save();
 }
+// Наполнение фильтра по роли в шапке (#17). Прячем, если ролей нет.
+function renderRoleFilter(){
+  const wrap=document.getElementById('roleFilterWrap'), sel=document.getElementById('roleFilter');
+  if(!wrap||!sel) return;
+  const roles=state.roles||[];
+  if(!roles.length){ wrap.style.display='none'; state.roleFilter=''; return; }
+  if(state.roleFilter && !roles.some(r=>r.name===state.roleFilter)) state.roleFilter=''; // роль удалили
+  wrap.style.display='';
+  sel.innerHTML='<option value="">Все</option>'+roles.map(r=>`<option value="${esc(r.name)}"${state.roleFilter===r.name?' selected':''}>${esc(r.name)}</option>`).join('');
+}
+function setRoleFilter(v){ state.roleFilter=v||''; render(); }
 function toggleMenu(e){ e.stopPropagation(); document.getElementById('fileMenu').classList.toggle('open'); }
 document.addEventListener('click',()=>{ const m=document.getElementById('fileMenu'); if(m) m.classList.remove('open'); });
 function setZoom(z){ state.zoom=z; render(); }
@@ -468,6 +521,11 @@ function groupOf(t){ return (t.group&&t.group.trim())||DEFAULT_GROUP; }
 // В списке на карточке показываем только номер задачи (часть после последнего дефиса),
 // напр. SDFKFSF-123 -> 123. В модалке остаётся полный ключ. Полный ключ — в title и в ссылке.
 function jiraNum(key){ const s=String(key||'').trim(); const i=s.lastIndexOf('-'); return i>=0?s.slice(i+1):s; }
+// Роли (#17): state.roles=[{name,color}] — общий на все стратегии, задаётся в настройках.
+// «Ответственный» задачи = имя роли (или свободный текст). Цвет роли красит бар автоматически.
+function roleColor(name){ const n=(name||'').trim(); if(!n) return null; const r=(state.roles||[]).find(x=>x.name===n); return r?r.color:null; }
+// Эффективный цвет задачи: цвет назначенной роли, иначе ручной цвет задачи.
+function taskColor(t){ return roleColor(t.assignee)||t.color; }
 // Метаданные групп стратегии: strat.groups=[{name,jira}], порядок массива = порядок отображения (#10, #12).
 // Синхронизируем с фактическими группами задач: добавляем новые (по ранней дате, «Другое» — в конец),
 // убираем исчезнувшие, сохраняем ручной порядок и JIRA существующих.
@@ -480,25 +538,34 @@ function syncGroups(strat,eff){
   const missing=present.filter(n=>!ordered.includes(n))
     .sort((a,b)=> (a===DEFAULT_GROUP?1:0)-(b===DEFAULT_GROUP?1:0) || earliest[a]-earliest[b]);
   ordered=[...ordered,...missing];
-  strat.groups=ordered.map(n=>{ const ex=strat.groups.find(g=>g.name===n); return {name:n,jira:ex?ex.jira||'':''}; });
+  strat.groups=ordered.map(n=>{ const ex=strat.groups.find(g=>g.name===n); return {name:n,jira:ex?ex.jira||'':'',collapsed:ex?!!ex.collapsed:false}; });
   return {order:ordered,map};
 }
 // Единый порядок строк для списка И для Гантта — чтобы они не разъезжались.
-// Возвращает плоский массив строк: {type:'group',name,jira,count} либо {type:'task',task}.
+// Возвращает плоский массив строк: {type:'group',name,jira,count,collapsed} либо {type:'task',task}.
+// Учитывает свёрнутость группы (#16) и фильтр по роли (#17).
 function buildRows(tasks){
   const strat=activeStrategy();
   const eff=resolveDates(tasks);
   const {order,map}=syncGroups(strat,eff);
+  const rf=state.roleFilter||'';
   const rows=[];
   order.forEach(name=>{
     let items=map[name]; if(!items||!items.length) return;
+    if(rf) items=items.filter(t=>(t.assignee||'')===rf);
+    if(!items.length) return; // при активном фильтре пустые группы не показываем
     items=[...items].sort((a,b)=> eff[a.id].start-eff[b.id].start);
     items=orderMilestones(items);
     const meta=strat.groups.find(g=>g.name===name)||{};
-    rows.push({type:'group',name,jira:meta.jira||'',count:items.length});
-    items.forEach(t=>rows.push({type:'task',task:t}));
+    rows.push({type:'group',name,jira:meta.jira||'',count:items.length,collapsed:!!meta.collapsed});
+    if(!meta.collapsed) items.forEach(t=>rows.push({type:'task',task:t}));
   });
   return rows;
+}
+// Свернуть/развернуть группу (#16)
+function toggleGroupCollapse(name){
+  const strat=activeStrategy(); const g=(strat.groups||[]).find(x=>x.name===name); if(!g) return;
+  g.collapsed=!g.collapsed; render();
 }
 // Переименование всей группы одним действием (#9): переносит все задачи в новое имя
 function renameGroup(oldName,newName){
@@ -554,12 +621,14 @@ function renderTasks(){
         ? `<a class="gjira" href="#" title="Открыть группу в JIRA" onclick="openJira('${esc(r.jira)}',event)">${esc(r.jira)}</a>`
         : '';
       d.innerHTML=`<span class="ghandle" title="Перетащите, чтобы изменить порядок групп">⋮⋮</span>`+
-        `<span class="gname" title="Двойной клик — переименовать группу">▸ ${esc(r.name)}</span>`+
+        `<span class="gcaret" title="${r.collapsed?'Развернуть':'Свернуть'} группу">${r.collapsed?'▸':'▾'}</span>`+
+        `<span class="gname" title="Двойной клик — переименовать группу">${esc(r.name)}</span>`+
         `<span class="gcount">· ${r.count}</span><span class="gspacer"></span>`+
         jiraHtml+
         `<button class="gjira-edit" title="JIRA для группы">🔗</button>`;
       const nameSpan=d.querySelector('.gname');
       nameSpan.ondblclick=(e)=>{ e.stopPropagation(); beginGroupRename(r.name,nameSpan); };
+      d.querySelector('.gcaret').onclick=(e)=>{ e.stopPropagation(); toggleGroupCollapse(r.name); };
       d.querySelector('.gjira-edit').onclick=(e)=>{ e.stopPropagation(); editGroupJira(r.name); };
       wireGroupDrag(d,r.name);
       host.appendChild(d); return;
@@ -568,7 +637,7 @@ function renderTasks(){
     const over=eff[t.id].end>dl;
     const auto=t.deps&&t.deps.length;
     const d=document.createElement('div'); d.className='g-task'+(over?' over':'');
-    d.innerHTML=`<div class="g-name"><span class="nm"><span class="dot" style="background:${t.progress>=100?'var(--done)':t.color}"></span>${t.milestone?'◆ ':''}${esc(t.name)}${over?' <span title="За дедлайном" style="color:var(--crit)">⚠</span>':''}</span>${t.jira?`<a class="jira" href="#" title="${esc(t.jira)} — открыть в JIRA" onclick="openJira('${esc(t.jira)}',event)">${esc(jiraNum(t.jira))}</a>`:''}</div>
+    d.innerHTML=`<div class="g-name"><span class="nm"><span class="dot" style="background:${t.progress>=100?'var(--done)':taskColor(t)}"></span>${t.milestone?'◆ ':''}${esc(t.name)}${over?' <span title="За дедлайном" style="color:var(--crit)">⚠</span>':''}</span>${t.jira?`<a class="jira" href="#" title="${esc(t.jira)} — открыть в JIRA" onclick="openJira('${esc(t.jira)}',event)">${esc(jiraNum(t.jira))}</a>`:''}</div>
       <div class="g-meta">${esc(t.assignee||'—')}</div>
       <div class="g-start" title="${auto?'Авто (от зависимостей)':'Задано вручную'}">${auto?'⛓ ':''}${fmt(eff[t.id].start)}</div>
       <div class="g-dur">${t.milestone?'—':t.dur}</div>`;
@@ -615,6 +684,11 @@ function renderGantt(){
     cur.setDate(cur.getDate()+1);
   }
   if(dl>=start&&dl<=end){ const dx=xOf(dl)+dayW/2; hs+=`<line x1="${dx}" y1="22" x2="${dx}" y2="${headH}" stroke="var(--milestone)" stroke-width="1.5"/><text x="${dx-4}" y="34" text-anchor="end" class="axisText" style="fill:var(--milestone);font-weight:600">дедлайн</text>`; }
+  // важные даты (#15) — вертикальные линии с подписью в шапке
+  (state.markers||[]).forEach(m=>{ const md=parseDate(m.date); if(md<start||md>end) return; const mx=xOf(md)+dayW/2, c=esc(m.color||'#38bdf8');
+    hs+=`<line x1="${mx}" y1="22" x2="${mx}" y2="${headH}" stroke="${c}" stroke-width="1.5"/>`;
+    if(m.name) hs+=`<text x="${mx+3}" y="10" class="axisText" style="fill:${c};font-weight:600">${esc(m.name)}</text>`;
+  });
   hs+=`<line x1="0" y1="${headH-0.5}" x2="${W}" y2="${headH-0.5}" stroke="var(--line)"/></svg>`;
   head.innerHTML=hs;
 
@@ -635,13 +709,16 @@ function renderGantt(){
   // today line
   const today=new Date(); today.setHours(0,0,0,0);
   if(today>=start&&today<=end){ const tx=xOf(today)+dayW/2; svg+=`<line x1="${tx}" y1="0" x2="${tx}" y2="${bodyH}" stroke="#ff5470" stroke-width="1.5" stroke-dasharray="4 3"/>`; }
+  // важные даты (#15) — вертикальные пунктирные линии на всю высоту трека
+  (state.markers||[]).forEach(m=>{ const md=parseDate(m.date); if(md<start||md>end) return; const mx=xOf(md)+dayW/2;
+    svg+=`<line x1="${mx}" y1="0" x2="${mx}" y2="${bodyH}" stroke="${esc(m.color||'#38bdf8')}" stroke-width="1.3" stroke-dasharray="3 3" opacity=".85"/>`; });
 
   // group bands
   rows.forEach((r,i)=>{ if(r.type!=='group') return;
     const y=i*rowH;
     svg+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="rgba(79,140,255,0.10)"/>`;
     svg+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="var(--line)"/>`;
-    svg+=`<text x="8" y="${y+rowH/2+4}" style="fill:var(--accent);font-size:11px;font-weight:700;letter-spacing:.5px">▸ ${esc(r.name.toUpperCase())} · ${r.count}${r.jira?'  ['+esc(r.jira)+']':''}</text>`;
+    svg+=`<text x="8" y="${y+rowH/2+4}" style="fill:var(--accent);font-size:11px;font-weight:700;letter-spacing:.5px">${r.collapsed?'▸':'▾'} ${esc(r.name.toUpperCase())} · ${r.count}${r.jira?'  ['+esc(r.jira)+']':''}</text>`;
   });
 
   // dependency arrows (по эффективным датам)
@@ -666,7 +743,7 @@ function renderGantt(){
     } else {
       const x=xOf(e.start), cols=Math.round((e.end-e.start)/86400000)+1;
       const w=Math.max(cols*dayW, Math.max(dayW*0.6,5));
-      const barColor=t.color;
+      const barColor=taskColor(t);
       svg+=`<rect data-bar="${t.id}" x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${barColor}" opacity=".35" style="cursor:grab"/>`;
       if(t.progress>0) svg+=`<rect x="${x}" y="${y}" width="${w*Math.min(t.progress,100)/100}" height="${h}" rx="5" fill="${t.progress>=100?'var(--done)':barColor}" style="pointer-events:none"/>`;
       svg+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="none" stroke="${over?'var(--crit)':barColor}" stroke-width="1.5" style="pointer-events:none"/>`;
@@ -689,9 +766,15 @@ function openTask(id){
   document.getElementById('f_group').value = t?(t.group||''):'';
   const gl=document.getElementById('groupList'); gl.innerHTML='';
   [...new Set(strat.tasks.map(x=>groupOf(x)))].forEach(g=>gl.innerHTML+=`<option value="${esc(g)}">`);
-  document.getElementById('f_assignee').value = t?t.assignee:'';
+  const cur = t?(t.assignee||''):'';
+  const roles = state.roles||[];
+  let opts='<option value="">— не задан —</option>';
+  roles.forEach(r=>{ opts+=`<option value="${esc(r.name)}"${r.name===cur?' selected':''}>${esc(r.name)}</option>`; });
+  if(cur && !roles.some(r=>r.name===cur)) opts+=`<option value="${esc(cur)}" selected>${esc(cur)} (вне списка)</option>`;
+  const asg=document.getElementById('f_assignee'); asg.innerHTML=opts; asg.value=cur;
   document.getElementById('f_jira').value = t?(t.jira||''):'';
   selColor = (t&&t.color)?t.color:'#4f8cff'; renderSwatches();
+  onAssigneeInput(); // ручной цвет прячем, когда выбрана роль (цвет задаёт роль)
   document.getElementById('f_start').value = t?t.start:fmt(new Date());
   document.getElementById('f_dur').value = t?t.dur:5;
   selProgress = t?(t.progress||0):0; renderProgress();
@@ -730,6 +813,13 @@ function renderDeps(filter){
 }
 function toggleDep(id,on){ if(on) depSel.add(id); else depSel.delete(id); }
 function filterDeps(v){ renderDeps(v); }
+// Если «Ответственный» — известная роль, цвет задаёт роль: прячем ручной выбор цвета (#17)
+function onAssigneeInput(){
+  const v=(document.getElementById('f_assignee').value||'').trim();
+  const isRole=!!roleColor(v);
+  const box=document.getElementById('f_colorSwatches'); if(box) box.style.display=isRole?'none':'';
+  const hint=document.getElementById('f_roleColorHint'); if(hint) hint.style.display=isRole?'inline':'none';
+}
 function renderSwatches(){
   const box=document.getElementById('f_colorSwatches'); if(!box) return; box.innerHTML='';
   const pal=PALETTE.includes(selColor)?PALETTE:[selColor,...PALETTE]; // сохранить кастомный цвет старых задач
@@ -824,6 +914,7 @@ function exportJSON(){
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
   a.download='roadmap-'+stampNow()+'.json'; a.click();
+  markSaved(); // #14: выгрузили — фиксируем текущее состояние как сохранённое
 }
 /* ---- XLSX (без библиотек: собираем OOXML + ZIP вручную) ---- */
 function exportXLSX(){
@@ -920,8 +1011,11 @@ function buildExportSVG(){
     cur.setDate(cur.getDate()+1);
   }
   if(dl>=start&&dl<=end){ const dx=xOf(dl)+dayW/2; s+=`<line x1="${dx}" y1="22" x2="${dx}" y2="${H}" stroke="#ffb020" stroke-width="1.5" stroke-dasharray="5 3"/>`; }
+  (state.markers||[]).forEach(m=>{ const md=parseDate(m.date); if(md<start||md>end) return; const mx=xOf(md)+dayW/2, c=esc(m.color||'#38bdf8');
+    s+=`<line x1="${mx}" y1="22" x2="${mx}" y2="${H}" stroke="${c}" stroke-width="1.3" stroke-dasharray="3 3"/>`;
+    if(m.name) s+=`<text x="${mx+3}" y="12" fill="${c}" font-size="10" font-weight="600">${esc(m.name)}</text>`; });
   rows.forEach((r,i)=>{ const y=headH+i*rowH;
-    if(r.type==='group'){ s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="rgba(79,140,255,0.10)"/><text x="8" y="${y+rowH/2+4}" fill="#4f8cff" font-size="11" font-weight="700">${esc('▸ '+r.name.toUpperCase()+' · '+r.count+(r.jira?'  ['+r.jira+']':''))}</text>`; return; }
+    if(r.type==='group'){ s+=`<rect x="0" y="${y}" width="${W}" height="${rowH}" fill="rgba(79,140,255,0.10)"/><text x="8" y="${y+rowH/2+4}" fill="#4f8cff" font-size="11" font-weight="700">${esc((r.collapsed?'▸ ':'▾ ')+r.name.toUpperCase()+' · '+r.count+(r.jira?'  ['+r.jira+']':''))}</text>`; return; }
     const t=r.task, e=eff[t.id], over=e.end>dl;
     s+=`<line x1="0" y1="${y+rowH}" x2="${W}" y2="${y+rowH}" stroke="#2a3347"/>`;
     s+=`<text x="10" y="${y+rowH/2+4}" fill="#e6ebf5" font-size="12">${esc((t.milestone?'◆ ':'')+clip(t.name,30))}</text>`;
@@ -930,7 +1024,7 @@ function buildExportSVG(){
     if(t.milestone){ const cx=xOf(e.start)+dayW/2, cy=by+h/2, rr=8, mc=t.progress>=100?'#2ecc71':'#ffb020';
       s+=`<polygon points="${cx},${cy-rr} ${cx+rr},${cy} ${cx},${cy+rr} ${cx-rr},${cy}" fill="${mc}"/>`;
       s+=`<text x="${cx+rr+5}" y="${cy+4}" fill="${mc}" font-size="11">${esc(t.name+(t.progress>=100?' ✓':''))}</text>`;
-    } else { const x=xOf(e.start), cols=Math.round((e.end-e.start)/86400000)+1, w=Math.max(cols*dayW,5), bc=t.color;
+    } else { const x=xOf(e.start), cols=Math.round((e.end-e.start)/86400000)+1, w=Math.max(cols*dayW,5), bc=taskColor(t);
       s+=`<rect x="${x}" y="${by}" width="${w}" height="${h}" rx="5" fill="${bc}" opacity="0.35"/>`;
       if(t.progress>0) s+=`<rect x="${x}" y="${by}" width="${w*Math.min(t.progress,100)/100}" height="${h}" rx="5" fill="${t.progress>=100?'#2ecc71':bc}"/>`;
       s+=`<rect x="${x}" y="${by}" width="${w}" height="${h}" rx="5" fill="none" stroke="${over?'#ff5470':bc}" stroke-width="1.5"/>`;
@@ -960,10 +1054,10 @@ function exportPNG(){
 }
 function importJSON(e){
   const f=e.target.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.strategies){ state=d; if(!state.active) state.active=state.strategies[0].id; render(); } else alert('Неверный формат файла'); }catch(err){ alert('Ошибка чтения: '+err.message); } };
+  const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result); if(d.strategies){ state=d; if(!state.active) state.active=state.strategies[0].id; render(); markSaved(); } else alert('Неверный формат файла'); }catch(err){ alert('Ошибка чтения: '+err.message); } };
   r.readAsText(f); e.target.value='';
 }
-function resetAll(){ if(confirm('Сбросить всё к стартовому состоянию (Стратегия 1 · одна задача «Тест»)? Текущие данные будут потеряны — сделай экспорт заранее.')){ state=seed(); render(); } }
+function resetAll(){ if(confirm('Сбросить всё к стартовому состоянию (Стратегия 1 · одна задача «Тест»)? Текущие данные будут потеряны — сделай экспорт заранее.')){ state=seed(); render(); markSaved(); } }
 
 /* ================= JIRA / Settings ================= */
 function jiraBaseNormalized(){ let b=(state.jiraBase||'').trim(); if(b&&!b.endsWith('/')) b+='/'; return b; }
@@ -977,8 +1071,59 @@ function openJira(key,ev){
   }
   window.open(base+encodeURIComponent(key),'_blank','noopener');
 }
-function openSettings(){ document.getElementById('s_jirabase').value=state.jiraBase||''; openModal('settingsModal'); }
-function saveSettings(){ state.jiraBase=document.getElementById('s_jirabase').value.trim(); save(); closeModal('settingsModal'); }
+function openSettings(){
+  document.getElementById('s_jirabase').value=state.jiraBase||'';
+  renderRolesEditor(); renderMarkersEditor();
+  openModal('settingsModal');
+}
+function saveSettings(){
+  state.jiraBase=document.getElementById('s_jirabase').value.trim();
+  // Роли: собрать из строк редактора (пустые имена пропускаем, дубли по имени — последний выигрывает)
+  const roles=[];
+  document.querySelectorAll('#s_roles .editRow').forEach(row=>{
+    const name=row.querySelector('.r-name').value.trim(); if(!name) return;
+    const color=pickedColor(row,ROLE_DEF_COLOR);
+    const i=roles.findIndex(r=>r.name===name); if(i>=0) roles[i].color=color; else roles.push({name,color});
+  });
+  state.roles=roles;
+  // Важные даты
+  const markers=[];
+  document.querySelectorAll('#s_markers .editRow').forEach(row=>{
+    const date=row.querySelector('.m-date').value; if(!date) return;
+    const name=row.querySelector('.m-name').value.trim();
+    const color=pickedColor(row,MARKER_DEF_COLOR);
+    markers.push({name,date,color});
+  });
+  markers.sort((a,b)=>a.date<b.date?-1:1);
+  state.markers=markers;
+  closeModal('settingsModal'); render();
+}
+/* ---- Редакторы ролей и важных дат в настройках (#17, #15) ---- */
+const ROLE_DEF_COLOR='#7c5cff', MARKER_DEF_COLOR='#38bdf8';
+// Та же палитра, что и в карточке задачи (12 цветов), без свободного color-picker
+const SWATCHES=PALETTE;
+function swatchPickerHtml(sel){
+  const s=(sel||'').toLowerCase();
+  const pal=SWATCHES.some(c=>c.toLowerCase()===s)?SWATCHES:[sel,...SWATCHES]; // сохранить нестандартный старый цвет
+  return `<span class="miniSwatches">`+pal.map(c=>`<button type="button" class="msw${c.toLowerCase()===s?' on':''}" style="background:${esc(c)}" data-color="${esc(c)}" title="${esc(c)}" onclick="pickSwatch(this)"></button>`).join('')+`</span>`;
+}
+function pickSwatch(btn){ btn.parentElement.querySelectorAll('.msw').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+function pickedColor(row,def){ const on=row.querySelector('.msw.on'); return on?on.dataset.color:def; }
+function roleRowHtml(name,color){
+  return `<div class="editRow"><input type="text" class="r-name" placeholder="Роль, напр. CJE" value="${esc(name||'')}">`+
+    swatchPickerHtml(color||ROLE_DEF_COLOR)+
+    `<button class="del" title="Удалить" onclick="this.closest('.editRow').remove()">✕</button></div>`;
+}
+function markerRowHtml(name,date,color){
+  return `<div class="editRow"><input type="text" class="m-name" placeholder="Название, напр. Демо" value="${esc(name||'')}">`+
+    `<input type="date" class="m-date" value="${esc(date||'')}">`+
+    swatchPickerHtml(color||MARKER_DEF_COLOR)+
+    `<button class="del" title="Удалить" onclick="this.closest('.editRow').remove()">✕</button></div>`;
+}
+function renderRolesEditor(){ document.getElementById('s_roles').innerHTML=(state.roles||[]).map(r=>roleRowHtml(r.name,r.color)).join(''); }
+function renderMarkersEditor(){ document.getElementById('s_markers').innerHTML=(state.markers||[]).map(m=>markerRowHtml(m.name,m.date,m.color)).join(''); }
+function addRoleRow(){ document.getElementById('s_roles').insertAdjacentHTML('beforeend',roleRowHtml('',ROLE_DEF_COLOR)); }
+function addMarkerRow(){ document.getElementById('s_markers').insertAdjacentHTML('beforeend',markerRowHtml('',state.deadline||fmt(new Date()),MARKER_DEF_COLOR)); }
 
 /* ================= Иконки (единый набор, монохром, SVG) ================= */
 const ICONS={
@@ -1060,8 +1205,12 @@ function seed(){
   window.addEventListener('mouseup',()=>{ if(!drag)return; drag=false; grip.classList.remove('active'); document.body.style.userSelect=''; localStorage.setItem('roadmap_leftW',getComputedStyle(gantt).getPropertyValue('--leftW').trim()); });
 })();
 
+// #14: предупреждать браузером о несохранённых (не выгруженных в JSON) изменениях
+window.addEventListener('beforeunload',e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
+
 initIcons();
 render();
+booting=false; markSaved(); // стартовое состояние считаем сохранённым
 </script>
 </body>
 </html>
