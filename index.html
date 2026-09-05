@@ -16,7 +16,8 @@
   .app{display:flex;flex-direction:column;height:100vh}
 
   header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
-  header h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px}
+  header h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px;display:inline-flex;align-items:center;gap:9px}
+  header h1 .logo{display:inline-flex;width:30px;height:30px;align-items:center;justify-content:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;flex:none}
   header .spacer{flex:1}
   .btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;transition:.15s}
   .btn:hover{border-color:var(--accent);background:#232c3e}
@@ -41,6 +42,7 @@
   .menuList{display:none;position:absolute;right:0;top:calc(100% + 5px);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:6px;min-width:190px;z-index:60;box-shadow:0 10px 28px rgba(0,0,0,.45)}
   .menuList button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:none;color:var(--text);padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px}
   .menuList button:hover{background:#232c3e}
+  .menuSep{height:1px;background:var(--line);margin:5px 6px}
   .menuList button.danger:hover{color:var(--crit)}
 
   .strategyTabs{display:flex;gap:6px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
@@ -65,6 +67,7 @@
   .gaxis{height:48px;background:var(--panel)}
 
   .gbody{display:flex;width:max-content}
+  .gpad{height:32px} /* воздух снизу, чтобы последнюю плашку не перекрывал горизонтальный скролл (#18) */
   .gnames{position:sticky;left:0;z-index:10;width:var(--leftW);min-width:var(--leftW);background:var(--panel);border-right:1px solid var(--line);overflow:hidden}
   .gchart{position:relative}
 
@@ -161,23 +164,23 @@
 <body>
 <div class="app">
   <header>
-    <h1>🗺️ Roadmap Creator</h1>
-    <span class="chip" id="projSpan"></span>
+    <h1><span class="logo" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="4.5" width="13" height="3.4" rx="1.7" fill="#4f8cff"/><rect x="7" y="10.3" width="14" height="3.4" rx="1.7" fill="#7c5cff"/><rect x="3" y="16.1" width="9" height="3.4" rx="1.7" fill="#ffb020"/></svg></span>Roadmap Creator</h1>
     <span class="chip dirty" id="dirtyFlag" title="Есть изменения, не выгруженные в JSON" style="display:none">● Не сохранено в JSON</span>
     <div class="spacer"></div>
-    <label class="dl" id="roleFilterWrap" style="display:none">Ответственный (Роль) <select id="roleFilter" onchange="setRoleFilter(this.value)"></select></label>
+    <label class="dl" id="roleFilterWrap" title="Фильтр по ответственному (роли)" style="display:none"><span class="ic" data-icon="user"></span><select id="roleFilter" onchange="setRoleFilter(this.value)"></select></label>
     <div class="zoom">
-      <button class="zb" data-z="day" onclick="setZoom('day')">День</button>
-      <button class="zb" data-z="week" onclick="setZoom('week')">Неделя</button>
-      <button class="zb" data-z="month" onclick="setZoom('month')">Месяц</button>
+      <button class="zb" data-z="day" onclick="setZoom('day')" title="День">D</button>
+      <button class="zb" data-z="week" onclick="setZoom('week')" title="Неделя">W</button>
+      <button class="zb" data-z="month" onclick="setZoom('month')" title="Месяц">M</button>
     </div>
-    <label class="dl">Дедлайн <input type="date" id="deadlineInput" onchange="setDeadline(this.value)"></label>
-    <button class="btn" id="labelToggle" onclick="toggleLabel()" title="Что писать на барах диаграммы"><span class="ic" data-icon="tag"></span><span id="labelToggleText"></span></button>
+    <label class="dl" title="Дедлайн квартала"><span class="ic" data-icon="flag"></span><input type="date" id="deadlineInput" onchange="setDeadline(this.value)"></label>
+    <button class="btn" id="labelToggle" onclick="toggleLabel()"><span class="ic" data-icon="tag"></span></button>
     <button class="btn primary" onclick="openTask()"><span class="ic" data-icon="plus"></span>Задача</button>
-    <button class="btn" onclick="openCompare()" title="Сравнить стратегии"><span class="ic" data-icon="bar"></span>Сравнить</button>
     <div class="menu" id="fileMenu">
       <button class="btn" onclick="toggleMenu(event)"><span class="ic" data-icon="more"></span>Ещё</button>
       <div class="menuList">
+        <button onclick="openCompare()"><span class="ic" data-icon="bar"></span>Сравнить стратегии</button>
+        <div class="menuSep"></div>
         <button onclick="exportJSON()"><span class="ic" data-icon="download"></span>Экспорт JSON</button>
         <button onclick="exportPNG()"><span class="ic" data-icon="image"></span>Экспорт PNG</button>
         <button onclick="exportXLSX()"><span class="ic" data-icon="table"></span>Экспорт Excel</button>
@@ -207,6 +210,7 @@
           <div class="gnames" id="taskRows"></div>
           <div class="gchart" id="ganttInner"></div>
         </div>
+        <div class="gpad"></div>
       </div>
       <div class="grip" id="grip" title="Тяните, чтобы изменить ширину колонки"></div>
     </section>
@@ -421,10 +425,9 @@ function render(){
   renderTabs();
   renderTasks();
   renderGantt();
-  document.getElementById('projSpan').textContent = 'Q3 2026 · стратегий: '+state.strategies.length;
   const di=document.getElementById('deadlineInput'); if(di) di.value=state.deadline;
   document.querySelectorAll('.zb').forEach(b=>b.classList.toggle('active',b.dataset.z===state.zoom));
-  const lt=document.getElementById('labelToggleText'); if(lt) lt.textContent=(state.barLabel==='name'?'Имя':'Отв.');
+  const lt=document.getElementById('labelToggle'); if(lt) lt.title='Подпись на барах: '+(state.barLabel==='name'?'имя задачи':'ответственный')+' — клик, чтобы сменить';
   save();
 }
 // Наполнение фильтра по роли в шапке (#17). Прячем, если ролей нет.
@@ -853,6 +856,16 @@ function saveTask(){
     milestone:document.getElementById('f_milestone').value==='1',
     deps
   };
+  // #19: при добавлении связи ставим старт на раб. день после позднейшего предшественника
+  // (иначе, если ручной старт задачи позже, плашка после связывания не двигается по треку)
+  const oldTask=editingTaskId?strat.tasks.find(t=>t.id===editingTaskId):null;
+  const oldDeps=new Set(oldTask?(oldTask.deps||[]):[]);
+  const depsChanged = deps.length!==oldDeps.size || deps.some(id=>!oldDeps.has(id));
+  if(deps.length && depsChanged){
+    const eff=resolveDates(strat.tasks); // даты предшественников от текущего графа
+    let latest=null; deps.forEach(id=>{ const de=eff[id]; if(de && (latest===null||de.end>latest)) latest=de.end; });
+    if(latest) data.start=fmt(addWorkDays(latest,1));
+  }
   if(editingTaskId){ Object.assign(strat.tasks.find(t=>t.id===editingTaskId),data); }
   else { data.id=uid(); strat.tasks.push(data); }
   closeModal('taskModal'); render();
@@ -1128,6 +1141,8 @@ function addMarkerRow(){ document.getElementById('s_markers').insertAdjacentHTML
 /* ================= Иконки (единый набор, монохром, SVG) ================= */
 const ICONS={
   tag:'<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1"/>',
+  flag:'<path d="M4 22V3"/><path d="M4 4h13l-2.5 4L17 12H4z"/>',
+  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
   bar:'<line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="5"/><line x1="18" y1="20" x2="18" y2="9"/><line x1="3" y1="20" x2="21" y2="20"/>',
   more:'<circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
