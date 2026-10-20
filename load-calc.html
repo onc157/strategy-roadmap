@@ -82,6 +82,8 @@ details table{margin-top:8px;font-size:13px}
 .lock form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
 .lock h2{margin:0}
 .lock input{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+/* type="text" + маскирование: у type="password" macOS принудительно включает латиницу */
+#pwd{-webkit-text-security:disc;text-security:disc}
 .lock .err{color:var(--danger);font-size:13px;min-height:18px}
 
 @media (max-width:760px){
@@ -95,7 +97,7 @@ details table{margin-top:8px;font-size:13px}
 <div class="lock" id="lock">
   <form id="lockForm">
     <h2>Калькулятор нагрузки обзвона</h2>
-    <input id="pwd" type="password" placeholder="Пароль" autocomplete="current-password" autofocus>
+    <input id="pwd" type="text" placeholder="Пароль" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
     <button class="primary" type="submit">Войти</button>
     <div class="err" id="pwdErr"></div>
   </form>
@@ -425,6 +427,7 @@ function snapPNG(s, num) {
 
 // ---------- Пароль (клиентская проверка по SHA-256) ----------
 const PWD_HASH = 'd49d1dd9d499c93f3fc8f81482c0ff31b6de9120f34e56736bcfcfe1ab64cbdc';
+const PWD_HASH_LAT = '290f47e21a6a55209b91ddace99acde68145aaa9ee80d68e69ebc41ba0b5d7f5'; // тот же пароль в английской раскладке
 const SS_AUTH = 'load_calc_auth_v1';
 
 async function sha256(s) {
@@ -440,7 +443,8 @@ function unlock() {
 }
 $('lockForm').addEventListener('submit', async e => {
   e.preventDefault();
-  if (await sha256($('pwd').value.trim()) === PWD_HASH) {
+  const h = await sha256($('pwd').value.trim().toLowerCase());
+  if (h === PWD_HASH || h === PWD_HASH_LAT) {
     try { sessionStorage.setItem(SS_AUTH, PWD_HASH); } catch (err) { }
     unlock();
   } else {
