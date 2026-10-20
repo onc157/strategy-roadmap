@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Калькулятор нагрузки обзвона</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1b1f24; --muted:#6b7280; --line:#e5e7eb;
+  --accent:#2563eb; --accent-soft:#eaf1ff; --flash:#fff3bf; --danger:#b91c1c;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:16px;margin:0 0 12px}
+.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+
+.inputs{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.field label{display:block;font-weight:600;margin-bottom:6px}
+.field .hint{color:var(--muted);font-size:12px;margin-top:6px}
+.big{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.big input[type=number]{font-size:22px;font-weight:600;width:160px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-variant-numeric:tabular-nums;font-family:inherit}
+.big input[type=number]:focus,.params input:focus,.actions input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.big .unit{color:var(--muted)}
+input[type=range]{width:100%;margin-top:10px;accent-color:var(--accent)}
+.params{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.params label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+.params input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font:inherit;font-variant-numeric:tabular-nums}
+
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600}
+td.v{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.u{color:var(--muted);white-space:nowrap}
+td.f{color:var(--muted);font-size:12px}
+tr.grp td{background:#f8f9fb;font-weight:700;padding-top:12px}
+tr.dep td:first-child{box-shadow:inset 3px 0 var(--accent)}
+tr.flash td.v{animation:fl .9s ease-out}
+@keyframes fl{from{background:var(--flash)}to{background:transparent}}
+.legend{color:var(--muted);font-size:12px;margin-top:10px}
+.legend i{display:inline-block;width:3px;height:12px;background:var(--accent);vertical-align:-2px;margin-right:6px}
+
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.actions input{flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+button{font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;color:var(--ink)}
+button:hover{border-color:#cbd5e1}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.primary:hover{filter:brightness(1.05)}
+button.sm{padding:4px 10px;font-size:13px}
+button.danger{color:var(--danger)}
+button.ghost{border:none;background:none;color:var(--accent);padding:0 4px;font-size:12px}
+
+.snaps{display:flex;flex-direction:column;gap:12px}
+.snap{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#fff}
+.snap-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.snap-t{font-weight:700}
+.snap-note{margin-top:2px}
+.snap-p{color:var(--muted);font-size:12px;margin-top:4px}
+.snap-btns{display:flex;gap:6px}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:12px}
+.kpi{background:#f8f9fb;border-radius:8px;padding:8px 10px}
+.kpi b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:11px;color:var(--muted)}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--accent);font-size:13px}
+details table{margin-top:8px;font-size:13px}
+.empty{color:var(--muted)}
+
+.lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.lock form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
+.lock h2{margin:0}
+.lock input{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+.lock .err{color:var(--danger);font-size:13px;min-height:18px}
+
+@media (max-width:760px){
+  .inputs{grid-template-columns:1fr}
+  .params{grid-template-columns:1fr 1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="lock" id="lock">
+  <form id="lockForm">
+    <h2>Калькулятор нагрузки обзвона</h2>
+    <input id="pwd" type="password" placeholder="Пароль" autocomplete="current-password" autofocus>
+    <button class="primary" type="submit">Войти</button>
+    <div class="err" id="pwdErr"></div>
+  </form>
+</div>
+<div class="wrap" id="app" hidden>
+  <h1 style="margin-bottom:20px">Калькулятор нагрузки обзвона</h1>
+
+  <div class="card">
+    <div class="inputs">
+      <div class="field">
+        <label for="cycle">Цикл одной попытки</label>
+        <div class="big">
+          <input id="cycle" type="number" min="1" step="1">
+          <span class="unit">сек <span id="cycleMin"></span></span>
+          <button class="ghost" id="resetCycle" title="Вернуть значение пилота">пилот: 324 с</button>
+        </div>
+        <input id="cycleRange" type="range" min="10" max="600" step="1">
+        <div class="hint">Сколько в среднем поток занят одной попыткой: дозвон + разговор + освобождение, усреднённо по всем исходам.</div>
+      </div>
+      <div class="field">
+        <label for="contacts">Контактов на входе</label>
+        <div class="big">
+          <input id="contacts" type="number" min="1" step="1">
+          <span class="unit">шт</span>
+        </div>
+        <div class="hint">Объём контакт-листа, который прогоняем через воронку и потоки.</div>
+      </div>
+    </div>
+    <div class="params">
+      <div><label for="streams">Потоков</label><input id="streams" type="number" min="1" step="1"></div>
+      <div><label for="hours">Часов обзвона в день</label><input id="hours" type="number" min="0.5" step="0.5"></div>
+      <div><label for="days">Рабочих дней в месяц</label><input id="days" type="number" min="1" step="1"></div>
+      <div><label for="tm">ТМ, звонков в месяц</label><input id="tm" type="number" min="0" step="100000"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Расчёт</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Показатель</th><th style="text-align:right">Значение</th><th>Ед.</th><th>Как считается</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="legend"><i></i>строки, которые зависят от цикла попытки</div>
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <input id="note" type="text" placeholder="Комментарий к слепку (необязательно), напр. «оптимистичный цикл 76 с»">
+      <button class="primary" id="save">Сохранить слепок + PNG</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Слепки</h2>
+    <div class="snaps" id="snaps"></div>
+  </div>
+</div>
+
+<script>
+const LS_STATE = 'load_calc_state_v1';
+const LS_SNAPS = 'load_calc_snapshots_v1';
+const DEF = { cycle: 324, contacts: 2000, streams: 30, hours: 10, days: 21, tm: 10500000 };
+const F = { dozvon: .6115, auto: .1825, conv: .5315, refuse: .4805, sms: .0235, done: .0095 };
+const KEYS = Object.keys(DEF);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+
+let params = Object.assign({}, DEF, lsGet(LS_STATE, {}));
+let snaps = lsGet(LS_SNAPS, []);
+let prev = {};
+
+const nfCache = {};
+function fmt(v, d) {
+  if (!isFinite(v)) return '—';
+  const nf = nfCache[d] || (nfCache[d] = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }));
+  return nf.format(v);
+}
+function fmtDate(ts) {
+  const t = new Date(ts), p = n => String(n).padStart(2, '0');
+  return `${p(t.getDate())}.${p(t.getMonth() + 1)}.${t.getFullYear()} ${p(t.getHours())}:${p(t.getMinutes())}`;
+}
+function paramsLine(p) {
+  return `Цикл ${fmt(p.cycle, 0)} с (${fmt(p.cycle / 60, 1)} мин) · Контактов ${fmt(p.contacts, 0)} · Потоков ${fmt(p.streams, 0)} · ${fmt(p.hours, 1)} ч/день · ${fmt(p.days, 0)} дн/мес · ТМ ${fmt(p.tm, 0)}/мес`;
+}
+
+// Строка: [показатель, значение, ед., знаков после запятой, как считается, зависит от цикла]
+function calc(p) {
+  const aph = 3600 / p.cycle;              // попыток на поток в час
+  const cph = aph * F.dozvon * F.conv;     // разговоров на поток в час
+  const dz = p.contacts * F.dozvon, cv = dz * F.conv;
+  const hN = p.contacts * p.cycle / p.streams / 3600;
+  const tmDay = p.tm / p.days;
+  const need = Math.ceil(tmDay / (aph * p.hours));
+  return [
+    { g: 'Воронка на входной объём', r: [
+      ['Звонков (контактов на входе)', p.contacts, 'шт', 0, 'ввод', 0],
+      ['Дозвонов', dz, 'шт', 0, '61,15% от звонков', 0],
+      ['…в т.ч. автоответчик', p.contacts * F.auto, 'шт', 0, '18,25% от звонков', 0],
+      ['Разговоров', cv, 'шт', 0, '53,15% от дозвонов', 0],
+      ['Отказов', cv * F.refuse, 'шт', 0, '48,05% от разговоров', 0],
+      ['Отправлено SMS с инструкцией', p.contacts * F.sms, 'шт', 0, '2,35% от звонков (табл. GigaVoice)', 0],
+      ['Уже оформил', p.contacts * F.done, 'шт', 0, '0,95% от звонков (табл. GigaVoice)', 0],
+    ]},
+    { g: 'Один поток', r: [
+      ['Попыток в час', aph, 'шт/ч', 1, '3600 / цикл', 1],
+      ['Разговоров в час', cph, 'шт/ч', 1, 'попыток × 61,15% × 53,15%', 1],
+      ['Попыток в день', aph * p.hours, 'шт/день', 0, '× часов в день', 1],
+      ['Разговоров в день', cph * p.hours, 'шт/день', 0, '× часов в день', 1],
+    ]},
+    { g: `Все потоки (${fmt(p.streams, 0)})`, r: [
+      ['Попыток в час', aph * p.streams, 'шт/ч', 0, 'на поток × потоков', 1],
+      ['Разговоров в час', cph * p.streams, 'шт/ч', 0, 'на поток × потоков', 1],
+      ['Попыток в день', aph * p.streams * p.hours, 'шт/день', 0, '× часов в день', 1],
+      ['Разговоров в день', cph * p.streams * p.hours, 'шт/день', 0, '× часов в день', 1],
+      ['Попыток в месяц', aph * p.streams * p.hours * p.days, 'шт/мес', 0, '× рабочих дней', 1],
+      ['Разговоров в месяц', cph * p.streams * p.hours * p.days, 'шт/мес', 0, '× рабочих дней', 1],
+    ]},
+    { g: 'Прозвон входного объёма', r: [
+      ['Время прозвона', hN, 'ч', 1, 'контакты × цикл / потоков / 3600', 1],
+      ['Рабочих дней на прозвон', hN / p.hours, 'дн', 1, 'время / часов в день', 1],
+    ]},
+    { g: 'ТМ', r: [
+      ['Попыток в день нужно', tmDay, 'шт/день', 0, 'ТМ в месяц / рабочих дней', 0],
+      ['Потоков нужно', need, 'потоков', 0, 'в день / (на поток в час × часов)', 1],
+      ['Кратно текущим потокам', need / p.streams, '×', 1, 'нужно / потоков', 1],
+    ]},
+  ];
+}
+
+function rowsHTML(groups, flashSet) {
+  let h = '';
+  groups.forEach(g => {
+    h += `<tr class="grp"><td colspan="4">${esc(g.g)}</td></tr>`;
+    g.r.forEach(([l, v, u, d, f, c]) => {
+      const cls = [c ? 'dep' : '', flashSet && flashSet.has(g.g + '|' + l) ? 'flash' : ''].join(' ').trim();
+      h += `<tr class="${cls}"><td>${esc(l)}</td><td class="v">${fmt(v, d)}</td><td class="u">${esc(u)}</td><td class="f">${esc(f)}</td></tr>`;
+    });
+  });
+  return h;
+}
+
+function valid(p) { return KEYS.every(k => isFinite(p[k]) && (k === 'tm' ? p[k] >= 0 : p[k] > 0)); }
+
+function render() {
+  const groups = calc(params);
+  const flash = new Set(), next = {};
+  groups.forEach(g => g.r.forEach(([l, v, , d]) => {
+    const k = g.g.replace(/\s*\(.*\)$/, '') + '|' + l, s = fmt(v, d);
+    next[k] = s;
+    if (prev[k] !== undefined && prev[k] !== s) flash.add(g.g + '|' + l);
+  }));
+  prev = next;
+  $('tbody').innerHTML = rowsHTML(groups, flash);
+  $('cycleMin').textContent = isFinite(params.cycle) && params.cycle > 0 ? `≈ ${fmt(params.cycle / 60, 1)} мин` : '';
+  lsSet(LS_STATE, params);
+}
+
+function syncInputs() {
+  KEYS.forEach(k => { $(k).value = params[k]; });
+  $('cycleRange').value = Math.min(600, Math.max(10, params.cycle));
+}
+
+KEYS.forEach(k => $(k).addEventListener('input', e => {
+  params[k] = parseFloat(e.target.value);
+  if (k === 'cycle' && isFinite(params.cycle)) $('cycleRange').value = Math.min(600, Math.max(10, params.cycle));
+  render();
+}));
+$('cycleRange').addEventListener('input', e => {
+  params.cycle = parseFloat(e.target.value);
+  $('cycle').value = params.cycle;
+  render();
+});
+$('resetCycle').addEventListener('click', () => { params.cycle = DEF.cycle; syncInputs(); render(); });
+
+// ---------- Слепки ----------
+function kpiList(s) {
+  const find = (g, l) => { const grp = s.groups.find(x => x.g.startsWith(g)); const r = grp && grp.r.find(x => x[0] === l); return r ? fmt(r[1], r[3]) : '—'; };
+  return [
+    [find('Воронка', 'Разговоров'), 'разговоров из входа'],
+    [find('Прозвон', 'Время прозвона') + ' ч', 'время прозвона'],
+    [find('Один поток', 'Попыток в час'), 'попыток/поток/ч'],
+    [find('Все потоки', 'Разговоров в день'), 'разговоров в день'],
+    [find('Все потоки', 'Разговоров в месяц'), 'разговоров в месяц'],
+    [find('ТМ', 'Потоков нужно'), 'потоков на ТМ'],
+  ];
+}
+
+function renderSnaps() {
+  const box = $('snaps');
+  if (!snaps.length) { box.innerHTML = '<div class="empty">Пока нет слепков. Подберите параметры и нажмите «Сохранить слепок + PNG».</div>'; return; }
+  box.innerHTML = snaps.map((s, i) => `
+    <div class="snap">
+      <div class="snap-h">
+        <div>
+          <div class="snap-t">Слепок #${i + 1} · ${fmtDate(s.ts)}</div>
+          ${s.note ? `<div class="snap-note">${esc(s.note)}</div>` : ''}
+          <div class="snap-p">${esc(paramsLine(s.params))}</div>
+        </div>
+        <div class="snap-btns">
+          <button class="sm" data-act="apply" data-id="${s.id}" title="Подставить параметры слепка в калькулятор">Применить</button>
+          <button class="sm" data-act="png" data-id="${s.id}">PNG</button>
+          <button class="sm danger" data-act="del" data-id="${s.id}">Удалить</button>
+        </div>
+      </div>
+      <div class="kpis">${kpiList(s).map(([v, l]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
+      <details><summary>Вся таблица</summary><div class="tbl"><table><tbody>${rowsHTML(s.groups)}</tbody></table></div></details>
+    </div>`).join('');
+}
+
+$('snaps').addEventListener('click', e => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const s = snaps.find(x => x.id === b.dataset.id); if (!s) return;
+  if (b.dataset.act === 'png') snapPNG(s, snaps.indexOf(s) + 1);
+  if (b.dataset.act === 'apply') { params = Object.assign({}, DEF, s.params); syncInputs(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  if (b.dataset.act === 'del') {
+    if (b.dataset.armed) { snaps = snaps.filter(x => x !== s); lsSet(LS_SNAPS, snaps); renderSnaps(); }
+    else { b.dataset.armed = '1'; b.textContent = 'Точно удалить?'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Удалить'; } }, 3000); }
+  }
+});
+
+$('save').addEventListener('click', () => {
+  if (!valid(params)) { $('save').textContent = 'Проверьте параметры'; setTimeout(() => $('save').textContent = 'Сохранить слепок + PNG', 1500); return; }
+  const s = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), note: $('note').value.trim(), params: Object.assign({}, params), groups: calc(params) };
+  snaps.push(s);
+  lsSet(LS_SNAPS, snaps);
+  renderSnaps();
+  snapPNG(s, snaps.length);
+  $('note').value = '';
+});
+
+// ---------- PNG (рисуем на canvas без библиотек) ----------
+function snapPNG(s, num) {
+  const W = 920, pad = 28, lh = 26, S = 2;
+  const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const rows = [];
+  s.groups.forEach(g => { rows.push({ grp: g.g }); g.r.forEach(r => rows.push({ r })); });
+  const H = pad + 30 + 22 + (s.note ? 22 : 0) + 10 + rows.length * lh + 30 + pad;
+
+  const cv = document.createElement('canvas');
+  cv.width = W * S; cv.height = H * S;
+  const x = cv.getContext('2d');
+  x.scale(S, S);
+  x.textBaseline = 'top';
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+
+  let y = pad;
+  x.fillStyle = '#1b1f24'; x.font = `600 20px ${FONT}`;
+  x.fillText(`Калькулятор нагрузки обзвона — слепок #${num}`, pad, y); y += 30;
+  x.fillStyle = '#6b7280'; x.font = `13px ${FONT}`;
+  x.fillText(`${fmtDate(s.ts)} · ${paramsLine(s.params)}`, pad, y); y += 22;
+  if (s.note) { x.fillStyle = '#1b1f24'; x.fillText(s.note, pad, y); y += 22; }
+  y += 10;
+
+  const colV = pad + 470, colU = pad + 482, colF = pad + 560;
+  rows.forEach(o => {
+    if (o.grp) {
+      x.fillStyle = '#f3f4f6'; x.fillRect(pad, y, W - 2 * pad, lh);
+      x.fillStyle = '#1b1f24'; x.font = `700 13px ${FONT}`; x.fillText(o.grp, pad + 10, y + 7);
+    } else {
+      const [l, v, u, d, f, c] = o.r;
+      if (c) { x.fillStyle = '#2563eb'; x.fillRect(pad, y + 4, 3, lh - 8); }
+      x.fillStyle = '#1b1f24'; x.font = `13px ${FONT}`; x.fillText(l, pad + 12, y + 7);
+      x.font = `600 13px ${FONT}`; x.textAlign = 'right'; x.fillText(fmt(v, d), colV, y + 7); x.textAlign = 'left';
+      x.fillStyle = '#6b7280'; x.font = `12px ${FONT}`;
+      x.fillText(u, colU, y + 8); x.fillText(f, colF, y + 8);
+      x.fillStyle = '#e5e7eb'; x.fillRect(pad, y + lh - 1, W - 2 * pad, 1);
+    }
+    y += lh;
+  });
+  y += 12;
+  x.fillStyle = '#2563eb'; x.fillRect(pad, y + 3, 3, 12);
+  x.fillStyle = '#6b7280'; x.font = `12px ${FONT}`;
+  x.fillText('зависит от цикла попытки', pad + 10, y + 2);
+
+  const t = new Date(s.ts), p = n => String(n).padStart(2, '0');
+  const a = document.createElement('a');
+  a.download = `нагрузка_слепок${num}_${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}_${p(t.getHours())}-${p(t.getMinutes())}.png`;
+  a.href = cv.toDataURL('image/png');
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ---------- Пароль (клиентская проверка по SHA-256) ----------
+const PWD_HASH = 'd49d1dd9d499c93f3fc8f81482c0ff31b6de9120f34e56736bcfcfe1ab64cbdc';
+const SS_AUTH = 'load_calc_auth_v1';
+
+async function sha256(s) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, '0')).join('');
+}
+function unlock() {
+  $('lock').hidden = true;
+  $('app').hidden = false;
+  syncInputs();
+  render();
+  renderSnaps();
+}
+$('lockForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (await sha256($('pwd').value.trim()) === PWD_HASH) {
+    try { sessionStorage.setItem(SS_AUTH, PWD_HASH); } catch (err) { }
+    unlock();
+  } else {
+    $('pwdErr').textContent = 'Неверный пароль';
+    $('pwd').select();
+  }
+});
+
+let authed = false;
+try { authed = sessionStorage.getItem(SS_AUTH) === PWD_HASH; } catch (e) { }
+if (authed) unlock();
+</script>
+</body>
+</html>
