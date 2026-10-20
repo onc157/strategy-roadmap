@@ -26,7 +26,7 @@ h2{font-size:16px;margin:0 0 12px}
 .big input[type=number]:focus,.params input:focus,.actions input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
 .big .unit{color:var(--muted)}
 input[type=range]{width:100%;margin-top:10px;accent-color:var(--accent)}
-.params{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.params{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
 .params label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
 .params input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font:inherit;font-variant-numeric:tabular-nums}
 
@@ -39,8 +39,16 @@ td.u{color:var(--muted);white-space:nowrap}
 td.f{color:var(--muted);font-size:12px}
 tr.grp td{background:#f8f9fb;font-weight:700;padding-top:12px}
 tr.dep td:first-child{box-shadow:inset 3px 0 var(--accent)}
+#calcTable:not(.open) tr.fold{display:none}
+tr.acc{cursor:pointer;user-select:none}
+tr.acc .arr{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}
+#calcTable.open tr.acc .arr{transform:rotate(90deg)}
 tr.flash td.v{animation:fl .9s ease-out}
 @keyframes fl{from{background:var(--flash)}to{background:transparent}}
+table.pivot th{text-align:right;white-space:nowrap}
+table.pivot td{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.pivot th:first-child,table.pivot td:first-child{text-align:left;font-weight:700}
+table.pivot tr.cur td{background:var(--accent-soft)}
 .legend{color:var(--muted);font-size:12px;margin-top:10px}
 .legend i{display:inline-block;width:3px;height:12px;background:var(--accent);vertical-align:-2px;margin-right:6px}
 
@@ -120,19 +128,24 @@ details table{margin-top:8px;font-size:13px}
       <div><label for="streams">Потоков</label><input id="streams" type="number" min="1" step="1"></div>
       <div><label for="hours">Часов обзвона в день</label><input id="hours" type="number" min="0.5" step="0.5"></div>
       <div><label for="days">Рабочих дней в месяц</label><input id="days" type="number" min="1" step="1"></div>
-      <div><label for="tm">ТМ, звонков в месяц</label><input id="tm" type="number" min="0" step="100000"></div>
     </div>
   </div>
 
   <div class="card">
     <h2>Расчёт</h2>
     <div class="tbl">
-      <table>
+      <table id="calcTable">
         <thead><tr><th>Показатель</th><th style="text-align:right">Значение</th><th>Ед.</th><th>Как считается</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
     <div class="legend"><i></i>строки, которые зависят от цикла попытки</div>
+  </div>
+
+  <div class="card">
+    <h2>Сводная по потокам</h2>
+    <div class="tbl" id="pivotBox"></div>
+    <div class="legend">При текущем цикле, входном объёме, часах в день и рабочих днях. Строка с текущим числом потоков подсвечена.</div>
   </div>
 
   <div class="card">
@@ -151,7 +164,7 @@ details table{margin-top:8px;font-size:13px}
 <script>
 const LS_STATE = 'load_calc_state_v1';
 const LS_SNAPS = 'load_calc_snapshots_v1';
-const DEF = { cycle: 324, contacts: 2000, streams: 30, hours: 10, days: 21, tm: 10500000 };
+const DEF = { cycle: 324, contacts: 2000, streams: 30, hours: 10, days: 21 };
 const F = { dozvon: .6115, auto: .1825, conv: .5315, refuse: .4805, sms: .0235, done: .0095 };
 const KEYS = Object.keys(DEF);
 
@@ -176,7 +189,7 @@ function fmtDate(ts) {
   return `${p(t.getDate())}.${p(t.getMonth() + 1)}.${t.getFullYear()} ${p(t.getHours())}:${p(t.getMinutes())}`;
 }
 function paramsLine(p) {
-  return `Цикл ${fmt(p.cycle, 0)} с (${fmt(p.cycle / 60, 1)} мин) · Контактов ${fmt(p.contacts, 0)} · Потоков ${fmt(p.streams, 0)} · ${fmt(p.hours, 1)} ч/день · ${fmt(p.days, 0)} дн/мес · ТМ ${fmt(p.tm, 0)}/мес`;
+  return `Цикл ${fmt(p.cycle, 0)} с (${fmt(p.cycle / 60, 1)} мин) · Контактов ${fmt(p.contacts, 0)} · Потоков ${fmt(p.streams, 0)} · ${fmt(p.hours, 1)} ч/день · ${fmt(p.days, 0)} дн/мес`;
 }
 
 // Строка: [показатель, значение, ед., знаков после запятой, как считается, зависит от цикла]
@@ -185,10 +198,8 @@ function calc(p) {
   const cph = aph * F.dozvon * F.conv;     // разговоров на поток в час
   const dz = p.contacts * F.dozvon, cv = dz * F.conv;
   const hN = p.contacts * p.cycle / p.streams / 3600;
-  const tmDay = p.tm / p.days;
-  const need = Math.ceil(tmDay / (aph * p.hours));
   return [
-    { g: 'Воронка на входной объём', r: [
+    { g: 'Воронка на входной объём', fold: 1, r: [
       ['Звонков (контактов на входе)', p.contacts, 'шт', 0, 'ввод', 0],
       ['Дозвонов', dz, 'шт', 0, '61,15% от звонков', 0],
       ['…в т.ч. автоответчик', p.contacts * F.auto, 'шт', 0, '18,25% от звонков', 0],
@@ -215,27 +226,45 @@ function calc(p) {
       ['Время прозвона', hN, 'ч', 1, 'контакты × цикл / потоков / 3600', 1],
       ['Рабочих дней на прозвон', hN / p.hours, 'дн', 1, 'время / часов в день', 1],
     ]},
-    { g: 'ТМ', r: [
-      ['Попыток в день нужно', tmDay, 'шт/день', 0, 'ТМ в месяц / рабочих дней', 0],
-      ['Потоков нужно', need, 'потоков', 0, 'в день / (на поток в час × часов)', 1],
-      ['Кратно текущим потокам', need / p.streams, '×', 1, 'нужно / потоков', 1],
-    ]},
   ];
+}
+
+// Сводная: [заголовок, знаков после запятой]
+const PIVOT_STREAMS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+const PIVOT_COLS = [['Потоков', 0], ['Попыток в час', 0], ['Попыток в день', 0], ['Разговоров в день', 0], ['Разговоров в месяц', 0], ['Прозвон входа, ч', 1], ['Прозвон входа, дн', 1]];
+
+function pivot(p) {
+  const aph = 3600 / p.cycle, cph = aph * F.dozvon * F.conv;
+  return PIVOT_STREAMS.map(n => {
+    const h = p.contacts * p.cycle / n / 3600;
+    return [n, aph * n, aph * n * p.hours, cph * n * p.hours, cph * n * p.hours * p.days, h, h / p.hours];
+  });
+}
+function pivotTable(p) {
+  const head = PIVOT_COLS.map(([t]) => `<th>${t}</th>`).join('');
+  const body = pivot(p).map(r => `<tr${r[0] === p.streams ? ' class="cur"' : ''}>${r.map((v, i) => `<td>${fmt(v, PIVOT_COLS[i][1])}</td>`).join('')}</tr>`).join('');
+  return `<table class="pivot"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
 }
 
 function rowsHTML(groups, flashSet) {
   let h = '';
   groups.forEach(g => {
-    h += `<tr class="grp"><td colspan="4">${esc(g.g)}</td></tr>`;
+    h += g.fold
+      ? `<tr class="grp acc"><td colspan="4"><span class="arr">▸</span>${esc(g.g)}</td></tr>`
+      : `<tr class="grp"><td colspan="4">${esc(g.g)}</td></tr>`;
     g.r.forEach(([l, v, u, d, f, c]) => {
-      const cls = [c ? 'dep' : '', flashSet && flashSet.has(g.g + '|' + l) ? 'flash' : ''].join(' ').trim();
+      const cls = [c ? 'dep' : '', g.fold ? 'fold' : '', flashSet && flashSet.has(g.g + '|' + l) ? 'flash' : ''].join(' ').trim();
       h += `<tr class="${cls}"><td>${esc(l)}</td><td class="v">${fmt(v, d)}</td><td class="u">${esc(u)}</td><td class="f">${esc(f)}</td></tr>`;
     });
   });
   return h;
 }
 
-function valid(p) { return KEYS.every(k => isFinite(p[k]) && (k === 'tm' ? p[k] >= 0 : p[k] > 0)); }
+function valid(p) { return KEYS.every(k => isFinite(p[k]) && p[k] > 0); }
+
+$('tbody').addEventListener('click', e => {
+  if (e.target.closest('tr.acc')) $('calcTable').classList.toggle('open');
+});
 
 function render() {
   const groups = calc(params);
@@ -247,6 +276,7 @@ function render() {
   }));
   prev = next;
   $('tbody').innerHTML = rowsHTML(groups, flash);
+  $('pivotBox').innerHTML = pivotTable(params);
   $('cycleMin').textContent = isFinite(params.cycle) && params.cycle > 0 ? `≈ ${fmt(params.cycle / 60, 1)} мин` : '';
   lsSet(LS_STATE, params);
 }
@@ -277,7 +307,7 @@ function kpiList(s) {
     [find('Один поток', 'Попыток в час'), 'попыток/поток/ч'],
     [find('Все потоки', 'Разговоров в день'), 'разговоров в день'],
     [find('Все потоки', 'Разговоров в месяц'), 'разговоров в месяц'],
-    [find('ТМ', 'Потоков нужно'), 'потоков на ТМ'],
+    [find('Все потоки', 'Попыток в день'), 'попыток в день'],
   ];
 }
 
@@ -299,7 +329,7 @@ function renderSnaps() {
         </div>
       </div>
       <div class="kpis">${kpiList(s).map(([v, l]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
-      <details><summary>Вся таблица</summary><div class="tbl"><table><tbody>${rowsHTML(s.groups)}</tbody></table></div></details>
+      <details><summary>Вся таблица</summary><div class="tbl"><table><tbody>${rowsHTML(s.groups)}</tbody></table></div><div class="tbl" style="margin-top:12px">${pivotTable(s.params)}</div></details>
     </div>`).join('');
 }
 
@@ -330,7 +360,7 @@ function snapPNG(s, num) {
   const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   const rows = [];
   s.groups.forEach(g => { rows.push({ grp: g.g }); g.r.forEach(r => rows.push({ r })); });
-  const H = pad + 30 + 22 + (s.note ? 22 : 0) + 10 + rows.length * lh + 30 + pad;
+  const H = pad + 30 + 22 + (s.note ? 22 : 0) + 10 + rows.length * lh + 16 + (2 + PIVOT_STREAMS.length) * lh + 30 + pad;
 
   const cv = document.createElement('canvas');
   cv.width = W * S; cv.height = H * S;
@@ -363,6 +393,24 @@ function snapPNG(s, num) {
     }
     y += lh;
   });
+
+  y += 16;
+  const cw = (W - 2 * pad) / PIVOT_COLS.length;
+  const colX = i => i ? pad + (i + 1) * cw - 8 : pad + 8;
+  x.fillStyle = '#1b1f24'; x.font = `700 14px ${FONT}`; x.fillText('Сводная по потокам', pad, y + 5); y += lh;
+  x.fillStyle = '#6b7280'; x.font = `600 12px ${FONT}`;
+  PIVOT_COLS.forEach(([t], i) => { x.textAlign = i ? 'right' : 'left'; x.fillText(t, colX(i), y + 8); });
+  x.fillStyle = '#e5e7eb'; x.fillRect(pad, y + lh - 1, W - 2 * pad, 1); y += lh;
+  pivot(s.params).forEach(r => {
+    if (r[0] === s.params.streams) { x.fillStyle = '#eaf1ff'; x.fillRect(pad, y, W - 2 * pad, lh); }
+    r.forEach((v, i) => {
+      x.fillStyle = '#1b1f24'; x.font = `${i ? '' : '700 '}13px ${FONT}`;
+      x.textAlign = i ? 'right' : 'left'; x.fillText(fmt(v, PIVOT_COLS[i][1]), colX(i), y + 7);
+    });
+    x.fillStyle = '#e5e7eb'; x.fillRect(pad, y + lh - 1, W - 2 * pad, 1);
+    y += lh;
+  });
+  x.textAlign = 'left';
   y += 12;
   x.fillStyle = '#2563eb'; x.fillRect(pad, y + 3, 3, 12);
   x.fillStyle = '#6b7280'; x.font = `12px ${FONT}`;
