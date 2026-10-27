@@ -5,91 +5,111 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Калькулятор нагрузки обзвона</title>
 <style>
+/* Токены в духе Ant Design 5 */
 :root{
-  --bg:#f5f6f8; --card:#fff; --ink:#1b1f24; --muted:#6b7280; --line:#e5e7eb;
-  --accent:#2563eb; --accent-soft:#eaf1ff; --flash:#fff3bf; --danger:#b91c1c;
+  --primary:#1677ff; --primary-hover:#4096ff; --primary-active:#0958d9; --primary-bg:#e6f4ff; --primary-border:#91caff;
+  --text:rgba(0,0,0,.88); --text2:rgba(0,0,0,.65); --text3:rgba(0,0,0,.45);
+  --border:#d9d9d9; --split:#f0f0f0; --bg:#f5f5f5; --fill:rgba(0,0,0,.02); --fill-hover:rgba(0,0,0,.06);
+  --danger:#ff4d4f; --danger-hover:#ff7875; --danger-bg:#fff2f0;
+  --shadow:0 1px 2px 0 rgba(0,0,0,.03),0 1px 6px -1px rgba(0,0,0,.02),0 2px 4px 0 rgba(0,0,0,.02);
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
-h1{font-size:22px;margin:0 0 4px}
-h2{font-size:16px;margin:0 0 12px}
-.sub{color:var(--muted);margin:0 0 20px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5715 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif}
+input,button{font:inherit;color:inherit}
 
-.inputs{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.field label{display:block;font-weight:600;margin-bottom:6px}
-.field .hint{color:var(--muted);font-size:12px;margin-top:6px}
-.big{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.big input[type=number]{font-size:22px;font-weight:600;width:160px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-variant-numeric:tabular-nums;font-family:inherit}
-.big input[type=number]:focus,.params input:focus,.actions input:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
-.big .unit{color:var(--muted)}
-input[type=range]{width:100%;margin-top:10px;accent-color:var(--accent)}
-.params{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
-.params label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
-.params input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;font:inherit;font-variant-numeric:tabular-nums}
+/* Layout */
+.header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--split);height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 24px}
+.header h1{margin:0;font-size:18px;font-weight:600}
+.content{max-width:1280px;margin:0 auto;padding:24px}
+.list{display:flex;flex-direction:column;gap:24px}
 
-.tbl{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
-th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{font-size:12px;color:var(--muted);font-weight:600}
-td.v{text-align:right;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-td.u{color:var(--muted);white-space:nowrap}
-td.f{color:var(--muted);font-size:12px}
-tr.grp td{background:#f8f9fb;font-weight:700;padding-top:12px}
-tr.dep td:first-child{box-shadow:inset 3px 0 var(--accent)}
-#calcTable:not(.open) tr.fold{display:none}
-tr.acc{cursor:pointer;user-select:none}
-tr.acc .arr{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}
-#calcTable.open tr.acc .arr{transform:rotate(90deg)}
-tr.flash td.v{animation:fl .9s ease-out}
-@keyframes fl{from{background:var(--flash)}to{background:transparent}}
-table.pivot th{text-align:right;white-space:nowrap}
-table.pivot td{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-table.pivot th:first-child,table.pivot td:first-child{text-align:left;font-weight:700}
-table.pivot tr.cur td{background:var(--accent-soft)}
-.legend{color:var(--muted);font-size:12px;margin-top:10px}
-.legend i{display:inline-block;width:3px;height:12px;background:var(--accent);vertical-align:-2px;margin-right:6px}
+/* Button */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:4px 15px;border-radius:6px;border:1px solid var(--border);background:#fff;box-shadow:0 2px 0 rgba(0,0,0,.02);cursor:pointer;white-space:nowrap;transition:all .2s cubic-bezier(.645,.045,.355,1)}
+.btn:hover{color:var(--primary-hover);border-color:var(--primary-hover)}
+.btn:active{color:var(--primary-active);border-color:var(--primary-active)}
+.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 2px 0 rgba(5,145,255,.1)}
+.btn-primary:hover{background:var(--primary-hover);border-color:var(--primary-hover);color:#fff}
+.btn-primary:active{background:var(--primary-active);border-color:var(--primary-active);color:#fff}
+.btn-text{border-color:transparent;background:transparent;box-shadow:none;padding:4px 8px}
+.btn-text:hover{background:var(--fill-hover);border-color:transparent;color:var(--text)}
+.btn-text.btn-danger{color:var(--danger)}
+.btn-text.btn-danger:hover{background:var(--danger-bg);color:var(--danger)}
+.btn-danger.armed{background:var(--danger);color:#fff}
+.btn-danger.armed:hover{background:var(--danger-hover);color:#fff}
+.btn-dashed{border-style:dashed;width:100%;height:40px;color:var(--text2)}
+.btn .ic{font-size:16px;line-height:1}
 
-.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.actions input{flex:1;min-width:220px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
-button{font:inherit;border:1px solid var(--line);background:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;color:var(--ink)}
-button:hover{border-color:#cbd5e1}
-button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-button.primary:hover{filter:brightness(1.05)}
-button.sm{padding:4px 10px;font-size:13px}
-button.danger{color:var(--danger)}
-button.ghost{border:none;background:none;color:var(--accent);padding:0 4px;font-size:12px}
+/* Card */
+.card{background:#fff;border-radius:8px;box-shadow:var(--shadow);border:1px solid var(--split)}
+.card-head{min-height:56px;padding:0 16px 0 24px;border-bottom:1px solid var(--split);display:flex;align-items:center;gap:12px}
+.title-input{flex:1;min-width:0;font-size:16px;font-weight:600;border:1px solid transparent;border-radius:6px;padding:4px 8px;margin-left:-9px;background:transparent;outline:none;transition:all .2s}
+.title-input:hover{border-color:var(--border)}
+.title-input:focus{border-color:var(--primary);box-shadow:0 0 0 2px rgba(5,145,255,.1)}
+.head-actions{display:flex;gap:4px}
+.card-body{padding:24px}
+.grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:32px}
 
-.snaps{display:flex;flex-direction:column;gap:12px}
-.snap{border:1px solid var(--line);border-radius:10px;padding:14px 16px;background:#fff}
-.snap-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
-.snap-t{font-weight:700}
-.snap-note{margin-top:2px}
-.snap-p{color:var(--muted);font-size:12px;margin-top:4px}
-.snap-btns{display:flex;gap:6px}
-.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:12px}
-.kpi{background:#f8f9fb;border-radius:8px;padding:8px 10px}
-.kpi b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
-.kpi span{font-size:11px;color:var(--muted)}
-details{margin-top:10px}
-summary{cursor:pointer;color:var(--accent);font-size:13px}
-details table{margin-top:8px;font-size:13px}
-.empty{color:var(--muted)}
+/* Divider с заголовком слева */
+.divider{display:flex;align-items:center;gap:12px;margin:0 0 16px;font-weight:600;font-size:15px}
+.divider::after{content:"";flex:1;border-top:1px solid var(--split)}
+.divider.mt{margin-top:28px}
 
+/* Form */
+.form-item{margin-bottom:16px}
+.form-item label{display:block;padding-bottom:6px}
+.input-number{display:flex;align-items:stretch;height:32px;border:1px solid var(--border);border-radius:6px;background:#fff;transition:all .2s}
+.input-number:hover{border-color:var(--primary-hover)}
+.input-number:focus-within{border-color:var(--primary);box-shadow:0 0 0 2px rgba(5,145,255,.1)}
+.input-number input{flex:1;min-width:0;border:none;outline:none;background:transparent;padding:4px 11px;font-variant-numeric:tabular-nums}
+.input-number .addon{display:flex;align-items:center;padding:0 11px;background:var(--fill);border-left:1px solid var(--border);border-radius:0 6px 6px 0;color:var(--text2);white-space:nowrap}
+.form-item.linked .input-number{border-color:var(--primary-border);background:var(--primary-bg)}
+.form-item.linked .input-number:hover,.form-item.linked .input-number:focus-within{border-color:var(--primary)}
+.form-item.linked .addon{background:transparent;border-left-color:var(--primary-border)}
+.extra{color:var(--text3);margin-top:4px;font-size:13px;line-height:1.4}
+.link-mark{color:var(--primary);margin-right:4px}
+
+/* Statistic */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.stats.s5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.stats.s3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.stat{padding:12px 16px;border:1px solid var(--split);border-radius:8px}
+.stat-title{color:var(--text3);margin-bottom:4px;font-size:13px}
+.stat-value{font-size:24px;line-height:32px;font-variant-numeric:tabular-nums}
+.stat-value small{font-size:14px;color:var(--text3);margin-left:4px}
+.tag{display:inline-block;margin-top:6px;font-size:12px;line-height:20px;padding:0 7px;border-radius:4px;border:1px solid var(--primary-border);background:var(--primary-bg);color:var(--primary-active);white-space:nowrap}
+
+/* Table (bordered, middle) */
+.tbl{overflow-x:auto;border:1px solid var(--split);border-radius:8px}
+table{width:100%;border-collapse:separate;border-spacing:0}
+th,td{padding:10px 12px;border-bottom:1px solid var(--split);border-right:1px solid var(--split);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+th:last-child,td:last-child{border-right:none}
+tbody tr:last-child td{border-bottom:none}
+th{background:#fafafa;font-weight:600}
+th.l,td.l{text-align:left}
+tbody tr:hover td{background:#fafafa}
+td.l{font-weight:500}
+
+.empty{text-align:center;color:var(--text3);padding:48px 0}
+
+/* Пароль */
 .lock{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
-.lock form{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px}
-.lock h2{margin:0}
-.lock input{padding:9px 10px;border:1px solid var(--line);border-radius:8px;font:inherit}
+.lock form{background:#fff;border-radius:8px;box-shadow:var(--shadow);padding:32px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:16px}
+.lock h2{margin:0;font-size:18px;font-weight:600}
+.lock .input-number input{height:30px}
 /* type="text" + маскирование: у type="password" macOS принудительно включает латиницу */
 #pwd{-webkit-text-security:disc;text-security:disc}
-.lock .err{color:var(--danger);font-size:13px;min-height:18px}
+.lock .err{color:var(--danger);min-height:22px;margin-top:-8px}
 
-@media (max-width:760px){
-  .inputs{grid-template-columns:1fr}
-  .params{grid-template-columns:1fr 1fr}
-  .kpis{grid-template-columns:repeat(2,1fr)}
+@media (max-width:1000px){
+  .grid{grid-template-columns:1fr}
+  .stats.s5{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:640px){
+  .header{padding:0 16px}
+  .content{padding:16px}
+  .card-body{padding:16px}
+  .stats,.stats.s5,.stats.s3{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 </style>
 </head>
@@ -97,333 +117,192 @@ details table{margin-top:8px;font-size:13px}
 <div class="lock" id="lock">
   <form id="lockForm">
     <h2>Калькулятор нагрузки обзвона</h2>
-    <input id="pwd" type="text" placeholder="Пароль" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
-    <button class="primary" type="submit">Войти</button>
+    <div class="input-number"><input id="pwd" type="text" placeholder="Пароль" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus></div>
+    <button class="btn btn-primary" type="submit">Войти</button>
     <div class="err" id="pwdErr"></div>
   </form>
 </div>
-<div class="wrap" id="app" hidden>
-  <h1 style="margin-bottom:20px">Калькулятор нагрузки обзвона</h1>
 
-  <div class="card">
-    <div class="inputs">
-      <div class="field">
-        <label for="cycle">Цикл одной попытки</label>
-        <div class="big">
-          <input id="cycle" type="number" min="1" step="1">
-          <span class="unit">сек <span id="cycleMin"></span></span>
-          <button class="ghost" id="resetCycle" title="Вернуть значение пилота">пилот: 324 с</button>
-        </div>
-        <input id="cycleRange" type="range" min="10" max="600" step="1">
-        <div class="hint">Сколько в среднем поток занят одной попыткой: дозвон + разговор + освобождение, усреднённо по всем исходам.</div>
-      </div>
-      <div class="field">
-        <label for="contacts">Контактов на входе</label>
-        <div class="big">
-          <input id="contacts" type="number" min="1" step="1">
-          <span class="unit">шт</span>
-        </div>
-        <div class="hint">Объём контакт-листа, который прогоняем через воронку и потоки.</div>
-      </div>
-    </div>
-    <div class="params">
-      <div><label for="streams">Потоков</label><input id="streams" type="number" min="1" step="1"></div>
-      <div><label for="hours">Часов обзвона в день</label><input id="hours" type="number" min="0.5" step="0.5"></div>
-      <div><label for="days">Рабочих дней в месяц</label><input id="days" type="number" min="1" step="1"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Расчёт</h2>
-    <div class="tbl">
-      <table id="calcTable">
-        <thead><tr><th>Показатель</th><th style="text-align:right">Значение</th><th>Ед.</th><th>Как считается</th></tr></thead>
-        <tbody id="tbody"></tbody>
-      </table>
-    </div>
-    <div class="legend"><i></i>строки, которые зависят от цикла попытки</div>
-  </div>
-
-  <div class="card">
-    <h2>Сводная по потокам</h2>
-    <div class="tbl" id="pivotBox"></div>
-    <div class="legend">При текущем цикле, входном объёме, часах в день и рабочих днях. Строка с текущим числом потоков подсвечена.</div>
-  </div>
-
-  <div class="card">
-    <div class="actions">
-      <input id="note" type="text" placeholder="Комментарий к слепку (необязательно), напр. «оптимистичный цикл 76 с»">
-      <button class="primary" id="save">Сохранить слепок + PNG</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Слепки</h2>
-    <div class="snaps" id="snaps"></div>
-  </div>
+<div id="app" hidden>
+  <header class="header">
+    <h1>Калькулятор нагрузки обзвона</h1>
+    <button class="btn btn-primary" data-act="add"><span class="ic">+</span>Добавить расчёт</button>
+  </header>
+  <main class="content">
+    <div class="list" id="list"></div>
+    <button class="btn btn-dashed" data-act="add" style="margin-top:24px"><span class="ic">+</span>Добавить расчёт</button>
+  </main>
 </div>
 
 <script>
-const LS_STATE = 'load_calc_state_v1';
-const LS_SNAPS = 'load_calc_snapshots_v1';
-const DEF = { cycle: 324, contacts: 2000, streams: 30, hours: 10, days: 21 };
-const F = { dozvon: .6115, auto: .1825, conv: .5315, refuse: .4805, sms: .0235, done: .0095 };
-const KEYS = Object.keys(DEF);
+const LS = 'load_calc_v2';
+const DEF = { calls: 2000, mio: 30, cycle: 324, dz: 61.15, conv: 53.15, refuse: 48.05, ivr: 18, hours: 10, days: 21 };
+const FIELDS = [
+  { k: 'calls', label: 'Объём звонков', addon: 'шт', step: 1 },
+  { k: 'mio', label: 'Портов МИО', addon: 'шт', step: 1 },
+  { k: 'cycle', label: 'Цикл попытки на МИО', addon: 'сек', step: 1, extra: 'Сколько в среднем порт МИО занят одной попыткой' },
+  { k: 'dz', label: 'Дозвоны', addon: '% от звонков', step: 0.01 },
+  { k: 'conv', label: 'Разговоры', addon: '% от дозвонов', step: 0.01 },
+  { k: 'refuse', label: 'Отказы', addon: '% от разговоров', step: 0.01 },
+  { k: 'ivr', label: 'Портов IVR / потоков GigaVoice', addon: 'шт', step: 1, linked: 1, extra: '= портов МИО × % дозвонов. Поля связаны: меняешь одно — пересчитывается другое' },
+  { k: 'hours', label: 'Часы обзвона в день', addon: 'ч', step: 0.5 },
+  { k: 'days', label: 'Рабочих дней в месяц', addon: 'дн', step: 1 },
+];
+const NUM_KEYS = FIELDS.map(f => f.k);
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-function lsGet(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
-function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
-
-let params = Object.assign({}, DEF, lsGet(LS_STATE, {}));
-let snaps = lsGet(LS_SNAPS, []);
-let prev = {};
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const round2 = v => Math.round(v * 100) / 100;
 
 const nfCache = {};
-function fmt(v, d) {
+function fmt(v, d = 0) {
   if (!isFinite(v)) return '—';
   const nf = nfCache[d] || (nfCache[d] = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }));
   return nf.format(v);
 }
-function fmtDate(ts) {
-  const t = new Date(ts), p = n => String(n).padStart(2, '0');
-  return `${p(t.getDate())}.${p(t.getMonth() + 1)}.${t.getFullYear()} ${p(t.getHours())}:${p(t.getMinutes())}`;
-}
-function paramsLine(p) {
-  return `Цикл ${fmt(p.cycle, 0)} с (${fmt(p.cycle / 60, 1)} мин) · Контактов ${fmt(p.contacts, 0)} · Потоков ${fmt(p.streams, 0)} · ${fmt(p.hours, 1)} ч/день · ${fmt(p.days, 0)} дн/мес`;
-}
+const pct = v => isFinite(v) ? new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(v) + '%' : '—';
 
-// Строка: [показатель, значение, ед., знаков после запятой, как считается, зависит от цикла]
-function calc(p) {
-  const aph = 3600 / p.cycle;              // попыток на поток в час
-  const cph = aph * F.dozvon * F.conv;     // разговоров на поток в час
-  const dz = p.contacts * F.dozvon, cv = dz * F.conv;
-  const hN = p.contacts * p.cycle / p.streams / 3600;
-  return [
-    { g: 'Воронка на входной объём', fold: 1, r: [
-      ['Звонков (контактов на входе)', p.contacts, 'шт', 0, 'ввод', 0],
-      ['Дозвонов', dz, 'шт', 0, '61,15% от звонков', 0],
-      ['…в т.ч. автоответчик', p.contacts * F.auto, 'шт', 0, '18,25% от звонков', 0],
-      ['Разговоров', cv, 'шт', 0, '53,15% от дозвонов', 0],
-      ['Отказов', cv * F.refuse, 'шт', 0, '48,05% от разговоров', 0],
-      ['Отправлено SMS с инструкцией', p.contacts * F.sms, 'шт', 0, '2,35% от звонков (табл. GigaVoice)', 0],
-      ['Уже оформил', p.contacts * F.done, 'шт', 0, '0,95% от звонков (табл. GigaVoice)', 0],
-    ]},
-    { g: 'Один поток', r: [
-      ['Попыток в час', aph, 'шт/ч', 1, '3600 / цикл', 1],
-      ['Разговоров в час', cph, 'шт/ч', 1, 'попыток × 61,15% × 53,15%', 1],
-      ['Попыток в день', aph * p.hours, 'шт/день', 0, '× часов в день', 1],
-      ['Разговоров в день', cph * p.hours, 'шт/день', 0, '× часов в день', 1],
-    ]},
-    { g: `Все потоки (${fmt(p.streams, 0)})`, r: [
-      ['Попыток в час', aph * p.streams, 'шт/ч', 0, 'на поток × потоков', 1],
-      ['Разговоров в час', cph * p.streams, 'шт/ч', 0, 'на поток × потоков', 1],
-      ['Попыток в день', aph * p.streams * p.hours, 'шт/день', 0, '× часов в день', 1],
-      ['Разговоров в день', cph * p.streams * p.hours, 'шт/день', 0, '× часов в день', 1],
-      ['Попыток в месяц', aph * p.streams * p.hours * p.days, 'шт/мес', 0, '× рабочих дней', 1],
-      ['Разговоров в месяц', cph * p.streams * p.hours * p.days, 'шт/мес', 0, '× рабочих дней', 1],
-    ]},
-    { g: 'Прозвон входного объёма', r: [
-      ['Время прозвона', hN, 'ч', 1, 'контакты × цикл / потоков / 3600', 1],
-      ['Рабочих дней на прозвон', hN / p.hours, 'дн', 1, 'время / часов в день', 1],
-    ]},
-  ];
+let state = load();
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS));
+    if (s && Array.isArray(s.items) && s.items.length) return s;
+  } catch (e) { }
+  return { items: [newItem(1)] };
+}
+function save() { try { localStorage.setItem(LS, JSON.stringify(state)); } catch (e) { } }
+function newItem(n) { return Object.assign({ id: uid(), name: `Расчёт ${n}` }, DEF); }
+const byId = id => state.items.find(x => x.id === id);
+
+// ---------- Расчёт ----------
+function calc(e) {
+  const d = e.dz / 100, c = e.conv / 100, r = e.refuse / 100;
+  const aph = 3600 / e.cycle;                         // попыток на порт МИО в час
+  const one = { att: aph, dz: aph * d, conv: aph * d * c };
+  one.ref = one.conv * r;
+  const scale = (o, m) => ({ att: o.att * m, dz: o.dz * m, conv: o.conv * m, ref: o.ref * m });
+  const oneDay = scale(one, e.hours);
+  const allH = scale(one, e.mio), allD = scale(oneDay, e.mio), allM = scale(allD, e.days);
+  const hours = e.calls * e.cycle / e.mio / 3600;
+  return {
+    funnel: { calls: e.calls, dz: e.calls * d, conv: e.calls * d * c, ref: e.calls * d * c * r },
+    one, oneDay, allH, allD, allM,
+    ivr: { ports: e.ivr, dzH: allH.dz, perPort: allH.dz / e.ivr, convD: allD.conv, convM: allM.conv },
+    total: { hours, days: hours / e.hours, months: hours / e.hours / e.days },
+  };
 }
 
-// Сводная: [заголовок, знаков после запятой]
-const PIVOT_STREAMS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
-const PIVOT_COLS = [['Потоков', 0], ['Попыток в час', 0], ['Попыток в день', 0], ['Разговоров в день', 0], ['Разговоров в месяц', 0], ['Прозвон входа, ч', 1], ['Прозвон входа, дн', 1]];
+const stat = (title, value, d = 0, tag = '', unit = '') =>
+  `<div class="stat"><div class="stat-title">${title}</div><div class="stat-value">${fmt(value, d)}${unit ? `<small>${unit}</small>` : ''}</div>${tag ? `<span class="tag">${tag}</span>` : ''}</div>`;
 
-function pivot(p) {
-  const aph = 3600 / p.cycle, cph = aph * F.dozvon * F.conv;
-  return PIVOT_STREAMS.map(n => {
-    const h = p.contacts * p.cycle / n / 3600;
-    return [n, aph * n, aph * n * p.hours, cph * n * p.hours, cph * n * p.hours * p.days, h, h / p.hours];
-  });
+function resultHTML(e) {
+  const R = calc(e);
+  const rows = [['Попытки', 'att'], ['Дозвоны', 'dz'], ['Разговоры', 'conv'], ['Отказы', 'ref']];
+  return `
+    <div class="stats">
+      ${stat('Звонки', R.funnel.calls)}
+      ${stat('Дозвоны', R.funnel.dz, 0, `${pct(e.dz)} от звонков`)}
+      ${stat('Разговоры', R.funnel.conv, 0, `${pct(e.conv)} от дозвонов`)}
+      ${stat('Отказы', R.funnel.ref, 0, `${pct(e.refuse)} от разговоров`)}
+    </div>
+
+    <div class="divider mt">Пропускная способность МИО</div>
+    <div class="tbl"><table>
+      <thead>
+        <tr><th class="l" rowspan="2"></th><th colspan="2">1 порт МИО</th><th colspan="3">Все порты МИО (${fmt(e.mio)})</th></tr>
+        <tr><th>в час</th><th>в день</th><th>в час</th><th>в день</th><th>в месяц</th></tr>
+      </thead>
+      <tbody>${rows.map(([l, k]) => `<tr><td class="l">${l}</td><td>${fmt(R.one[k], 1)}</td><td>${fmt(R.oneDay[k])}</td><td>${fmt(R.allH[k])}</td><td>${fmt(R.allD[k])}</td><td>${fmt(R.allM[k])}</td></tr>`).join('')}</tbody>
+    </table></div>
+
+    <div class="divider mt">IVR / GigaVoice</div>
+    <div class="stats s5">
+      ${stat('Портов IVR / потоков GV', R.ivr.ports)}
+      ${stat('Дозвонов в час', R.ivr.dzH, 0, 'на все порты')}
+      ${stat('Дозвонов в час', R.ivr.perPort, 1, 'на 1 порт')}
+      ${stat('Разговоров в день', R.ivr.convD)}
+      ${stat('Разговоров в месяц', R.ivr.convM)}
+    </div>
+
+    <div class="divider mt">Прозвон всего объёма</div>
+    <div class="stats s3">
+      ${stat('Время прозвона', R.total.hours, 1, '', 'ч')}
+      ${stat('Рабочих дней', R.total.days, 1, `при ${fmt(e.hours, 1)} ч в день`, 'дн')}
+      ${stat('Месяцев', R.total.months, 2, `при ${fmt(e.days)} раб. днях`, 'мес')}
+    </div>`;
 }
-function pivotTable(p) {
-  const head = PIVOT_COLS.map(([t]) => `<th>${t}</th>`).join('');
-  const body = pivot(p).map(r => `<tr${r[0] === p.streams ? ' class="cur"' : ''}>${r.map((v, i) => `<td>${fmt(v, PIVOT_COLS[i][1])}</td>`).join('')}</tr>`).join('');
-  return `<table class="pivot"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+
+// ---------- Рендер ----------
+function fieldHTML(e, f) {
+  return `<div class="form-item${f.linked ? ' linked' : ''}">
+    <label for="${e.id}-${f.k}">${f.linked ? '<span class="link-mark">⇄</span>' : ''}${f.label}</label>
+    <div class="input-number"><input id="${e.id}-${f.k}" type="number" step="${f.step}" min="0" data-k="${f.k}" value="${e[f.k]}"><span class="addon">${f.addon}</span></div>
+    ${f.extra ? `<div class="extra">${f.extra}</div>` : ''}
+  </div>`;
 }
 
-function rowsHTML(groups, flashSet) {
-  let h = '';
-  groups.forEach(g => {
-    h += g.fold
-      ? `<tr class="grp acc"><td colspan="4"><span class="arr">▸</span>${esc(g.g)}</td></tr>`
-      : `<tr class="grp"><td colspan="4">${esc(g.g)}</td></tr>`;
-    g.r.forEach(([l, v, u, d, f, c]) => {
-      const cls = [c ? 'dep' : '', g.fold ? 'fold' : '', flashSet && flashSet.has(g.g + '|' + l) ? 'flash' : ''].join(' ').trim();
-      h += `<tr class="${cls}"><td>${esc(l)}</td><td class="v">${fmt(v, d)}</td><td class="u">${esc(u)}</td><td class="f">${esc(f)}</td></tr>`;
-    });
-  });
-  return h;
+function itemHTML(e) {
+  return `<section class="card" data-id="${e.id}">
+    <div class="card-head">
+      <input class="title-input" data-k="name" value="${esc(e.name)}" title="Нажмите, чтобы переименовать">
+      <div class="head-actions">
+        <button class="btn btn-text" data-act="dup">Копировать</button>
+        <button class="btn btn-text btn-danger" data-act="del">Удалить</button>
+      </div>
+    </div>
+    <div class="card-body"><div class="grid">
+      <div><div class="divider">Входные данные</div>${FIELDS.map(f => fieldHTML(e, f)).join('')}</div>
+      <div><div class="divider">Расчёт</div><div class="res">${resultHTML(e)}</div></div>
+    </div></div>
+  </section>`;
 }
-
-function valid(p) { return KEYS.every(k => isFinite(p[k]) && p[k] > 0); }
-
-$('tbody').addEventListener('click', e => {
-  if (e.target.closest('tr.acc')) $('calcTable').classList.toggle('open');
-});
 
 function render() {
-  const groups = calc(params);
-  const flash = new Set(), next = {};
-  groups.forEach(g => g.r.forEach(([l, v, , d]) => {
-    const k = g.g.replace(/\s*\(.*\)$/, '') + '|' + l, s = fmt(v, d);
-    next[k] = s;
-    if (prev[k] !== undefined && prev[k] !== s) flash.add(g.g + '|' + l);
-  }));
-  prev = next;
-  $('tbody').innerHTML = rowsHTML(groups, flash);
-  $('pivotBox').innerHTML = pivotTable(params);
-  $('cycleMin').textContent = isFinite(params.cycle) && params.cycle > 0 ? `≈ ${fmt(params.cycle / 60, 1)} мин` : '';
-  lsSet(LS_STATE, params);
+  $('list').innerHTML = state.items.length
+    ? state.items.map(itemHTML).join('')
+    : '<div class="card empty">Нет расчётов. Нажмите «Добавить расчёт».</div>';
+  save();
 }
 
-function syncInputs() {
-  KEYS.forEach(k => { $(k).value = params[k]; });
-  $('cycleRange').value = Math.min(600, Math.max(10, params.cycle));
-}
+// ---------- События ----------
+$('list').addEventListener('input', ev => {
+  const inp = ev.target.closest('[data-k]'); if (!inp) return;
+  const card = inp.closest('.card'), e = byId(card.dataset.id), k = inp.dataset.k;
+  if (k === 'name') { e.name = inp.value; save(); return; }
 
-KEYS.forEach(k => $(k).addEventListener('input', e => {
-  params[k] = parseFloat(e.target.value);
-  if (k === 'cycle' && isFinite(params.cycle)) $('cycleRange').value = Math.min(600, Math.max(10, params.cycle));
-  render();
-}));
-$('cycleRange').addEventListener('input', e => {
-  params.cycle = parseFloat(e.target.value);
-  $('cycle').value = params.cycle;
-  render();
+  e[k] = parseFloat(inp.value);
+  const setField = (key, v) => { const el = card.querySelector(`[data-k="${key}"]`); if (el !== inp) el.value = v; };
+  // Связка: портов IVR = портов МИО × % дозвонов
+  if ((k === 'dz' || k === 'mio') && isFinite(e.mio) && isFinite(e.dz)) { e.ivr = Math.round(e.mio * e.dz / 100); setField('ivr', e.ivr); }
+  if (k === 'ivr' && isFinite(e.ivr) && e.mio > 0) { e.dz = round2(e.ivr / e.mio * 100); setField('dz', e.dz); }
+
+  card.querySelector('.res').innerHTML = resultHTML(e);
+  save();
 });
-$('resetCycle').addEventListener('click', () => { params.cycle = DEF.cycle; syncInputs(); render(); });
 
-// ---------- Слепки ----------
-function kpiList(s) {
-  const find = (g, l) => { const grp = s.groups.find(x => x.g.startsWith(g)); const r = grp && grp.r.find(x => x[0] === l); return r ? fmt(r[1], r[3]) : '—'; };
-  return [
-    [find('Воронка', 'Разговоров'), 'разговоров из входа'],
-    [find('Прозвон', 'Время прозвона') + ' ч', 'время прозвона'],
-    [find('Один поток', 'Попыток в час'), 'попыток/поток/ч'],
-    [find('Все потоки', 'Разговоров в день'), 'разговоров в день'],
-    [find('Все потоки', 'Разговоров в месяц'), 'разговоров в месяц'],
-    [find('Все потоки', 'Попыток в день'), 'попыток в день'],
-  ];
-}
-
-function renderSnaps() {
-  const box = $('snaps');
-  if (!snaps.length) { box.innerHTML = '<div class="empty">Пока нет слепков. Подберите параметры и нажмите «Сохранить слепок + PNG».</div>'; return; }
-  box.innerHTML = snaps.map((s, i) => `
-    <div class="snap">
-      <div class="snap-h">
-        <div>
-          <div class="snap-t">Слепок #${i + 1} · ${fmtDate(s.ts)}</div>
-          ${s.note ? `<div class="snap-note">${esc(s.note)}</div>` : ''}
-          <div class="snap-p">${esc(paramsLine(s.params))}</div>
-        </div>
-        <div class="snap-btns">
-          <button class="sm" data-act="apply" data-id="${s.id}" title="Подставить параметры слепка в калькулятор">Применить</button>
-          <button class="sm" data-act="png" data-id="${s.id}">PNG</button>
-          <button class="sm danger" data-act="del" data-id="${s.id}">Удалить</button>
-        </div>
-      </div>
-      <div class="kpis">${kpiList(s).map(([v, l]) => `<div class="kpi"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
-      <details><summary>Вся таблица</summary><div class="tbl"><table><tbody>${rowsHTML(s.groups)}</tbody></table></div><div class="tbl" style="margin-top:12px">${pivotTable(s.params)}</div></details>
-    </div>`).join('');
-}
-
-$('snaps').addEventListener('click', e => {
-  const b = e.target.closest('button[data-act]'); if (!b) return;
-  const s = snaps.find(x => x.id === b.dataset.id); if (!s) return;
-  if (b.dataset.act === 'png') snapPNG(s, snaps.indexOf(s) + 1);
-  if (b.dataset.act === 'apply') { params = Object.assign({}, DEF, s.params); syncInputs(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  if (b.dataset.act === 'del') {
-    if (b.dataset.armed) { snaps = snaps.filter(x => x !== s); lsSet(LS_SNAPS, snaps); renderSnaps(); }
-    else { b.dataset.armed = '1'; b.textContent = 'Точно удалить?'; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = 'Удалить'; } }, 3000); }
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-act]'); if (!b) return;
+  const act = b.dataset.act;
+  if (act === 'add') {
+    state.items.push(newItem(state.items.length + 1));
+    render();
+    $('list').lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  const card = b.closest('.card'), e = card && byId(card.dataset.id); if (!e) return;
+  if (act === 'dup') {
+    const i = state.items.indexOf(e);
+    state.items.splice(i + 1, 0, Object.assign({}, e, { id: uid(), name: e.name + ' (копия)' }));
+    render();
+  }
+  if (act === 'del') {
+    if (b.classList.contains('armed')) { state.items = state.items.filter(x => x !== e); render(); return; }
+    b.classList.add('armed'); b.textContent = 'Точно удалить?';
+    setTimeout(() => { if (b.isConnected) { b.classList.remove('armed'); b.textContent = 'Удалить'; } }, 3000);
   }
 });
-
-$('save').addEventListener('click', () => {
-  if (!valid(params)) { $('save').textContent = 'Проверьте параметры'; setTimeout(() => $('save').textContent = 'Сохранить слепок + PNG', 1500); return; }
-  const s = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), ts: Date.now(), note: $('note').value.trim(), params: Object.assign({}, params), groups: calc(params) };
-  snaps.push(s);
-  lsSet(LS_SNAPS, snaps);
-  renderSnaps();
-  snapPNG(s, snaps.length);
-  $('note').value = '';
-});
-
-// ---------- PNG (рисуем на canvas без библиотек) ----------
-function snapPNG(s, num) {
-  const W = 920, pad = 28, lh = 26, S = 2;
-  const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-  const rows = [];
-  s.groups.forEach(g => { rows.push({ grp: g.g }); g.r.forEach(r => rows.push({ r })); });
-  const H = pad + 30 + 22 + (s.note ? 22 : 0) + 10 + rows.length * lh + 16 + (2 + PIVOT_STREAMS.length) * lh + 30 + pad;
-
-  const cv = document.createElement('canvas');
-  cv.width = W * S; cv.height = H * S;
-  const x = cv.getContext('2d');
-  x.scale(S, S);
-  x.textBaseline = 'top';
-  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
-
-  let y = pad;
-  x.fillStyle = '#1b1f24'; x.font = `600 20px ${FONT}`;
-  x.fillText(`Калькулятор нагрузки обзвона — слепок #${num}`, pad, y); y += 30;
-  x.fillStyle = '#6b7280'; x.font = `13px ${FONT}`;
-  x.fillText(`${fmtDate(s.ts)} · ${paramsLine(s.params)}`, pad, y); y += 22;
-  if (s.note) { x.fillStyle = '#1b1f24'; x.fillText(s.note, pad, y); y += 22; }
-  y += 10;
-
-  const colV = pad + 470, colU = pad + 482, colF = pad + 560;
-  rows.forEach(o => {
-    if (o.grp) {
-      x.fillStyle = '#f3f4f6'; x.fillRect(pad, y, W - 2 * pad, lh);
-      x.fillStyle = '#1b1f24'; x.font = `700 13px ${FONT}`; x.fillText(o.grp, pad + 10, y + 7);
-    } else {
-      const [l, v, u, d, f, c] = o.r;
-      if (c) { x.fillStyle = '#2563eb'; x.fillRect(pad, y + 4, 3, lh - 8); }
-      x.fillStyle = '#1b1f24'; x.font = `13px ${FONT}`; x.fillText(l, pad + 12, y + 7);
-      x.font = `600 13px ${FONT}`; x.textAlign = 'right'; x.fillText(fmt(v, d), colV, y + 7); x.textAlign = 'left';
-      x.fillStyle = '#6b7280'; x.font = `12px ${FONT}`;
-      x.fillText(u, colU, y + 8); x.fillText(f, colF, y + 8);
-      x.fillStyle = '#e5e7eb'; x.fillRect(pad, y + lh - 1, W - 2 * pad, 1);
-    }
-    y += lh;
-  });
-
-  y += 16;
-  const cw = (W - 2 * pad) / PIVOT_COLS.length;
-  const colX = i => i ? pad + (i + 1) * cw - 8 : pad + 8;
-  x.fillStyle = '#1b1f24'; x.font = `700 14px ${FONT}`; x.fillText('Сводная по потокам', pad, y + 5); y += lh;
-  x.fillStyle = '#6b7280'; x.font = `600 12px ${FONT}`;
-  PIVOT_COLS.forEach(([t], i) => { x.textAlign = i ? 'right' : 'left'; x.fillText(t, colX(i), y + 8); });
-  x.fillStyle = '#e5e7eb'; x.fillRect(pad, y + lh - 1, W - 2 * pad, 1); y += lh;
-  pivot(s.params).forEach(r => {
-    if (r[0] === s.params.streams) { x.fillStyle = '#eaf1ff'; x.fillRect(pad, y, W - 2 * pad, lh); }
-    r.forEach((v, i) => {
-      x.fillStyle = '#1b1f24'; x.font = `${i ? '' : '700 '}13px ${FONT}`;
-      x.textAlign = i ? 'right' : 'left'; x.fillText(fmt(v, PIVOT_COLS[i][1]), colX(i), y + 7);
-    });
-    x.fillStyle = '#e5e7eb'; x.fillRect(pad, y + lh - 1, W - 2 * pad, 1);
-    y += lh;
-  });
-  x.textAlign = 'left';
-  y += 12;
-  x.fillStyle = '#2563eb'; x.fillRect(pad, y + 3, 3, 12);
-  x.fillStyle = '#6b7280'; x.font = `12px ${FONT}`;
-  x.fillText('зависит от цикла попытки', pad + 10, y + 2);
-
-  const t = new Date(s.ts), p = n => String(n).padStart(2, '0');
-  const a = document.createElement('a');
-  a.download = `нагрузка_слепок${num}_${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}_${p(t.getHours())}-${p(t.getMinutes())}.png`;
-  a.href = cv.toDataURL('image/png');
-  document.body.appendChild(a); a.click(); a.remove();
-}
 
 // ---------- Пароль (клиентская проверка по SHA-256) ----------
 const PWD_HASH = 'd49d1dd9d499c93f3fc8f81482c0ff31b6de9120f34e56736bcfcfe1ab64cbdc';
@@ -437,9 +316,7 @@ async function sha256(s) {
 function unlock() {
   $('lock').hidden = true;
   $('app').hidden = false;
-  syncInputs();
   render();
-  renderSnaps();
 }
 $('lockForm').addEventListener('submit', async e => {
   e.preventDefault();
