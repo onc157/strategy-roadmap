@@ -139,12 +139,12 @@ const LS = 'load_calc_v2';
 const DEF = { calls: 2000, mio: 30, cycle: 324, dz: 61.15, conv: 53.15, refuse: 48.05, ivr: 18, hours: 10, days: 21 };
 const FIELDS = [
   { k: 'calls', label: 'Объём звонков', addon: 'шт', step: 1 },
-  { k: 'mio', label: 'Портов МИО', addon: 'шт', step: 1 },
+  { k: 'mio', label: 'Портов МИО', addon: 'шт', step: 1, linked: 1 },
   { k: 'cycle', label: 'Цикл попытки на МИО', addon: 'сек', step: 1, extra: 'Сколько в среднем порт МИО занят одной попыткой' },
   { k: 'dz', label: 'Дозвоны', addon: '% от звонков', step: 0.01 },
   { k: 'conv', label: 'Разговоры', addon: '% от дозвонов', step: 0.01 },
   { k: 'refuse', label: 'Отказы', addon: '% от разговоров', step: 0.01 },
-  { k: 'ivr', label: 'Портов IVR / потоков GigaVoice', addon: 'шт', step: 1, linked: 1, extra: '= портов МИО × % дозвонов. Поля связаны: меняешь одно — пересчитывается другое' },
+  { k: 'ivr', label: 'Портов IVR / потоков GigaVoice', addon: 'шт', step: 1, linked: 1, extra: 'Связано с портами МИО: IVR = МИО × % дозвонов.' },
   { k: 'hours', label: 'Часы обзвона в день', addon: 'ч', step: 0.5 },
   { k: 'days', label: 'Рабочих дней в месяц', addon: 'дн', step: 1 },
 ];
@@ -153,7 +153,6 @@ const NUM_KEYS = FIELDS.map(f => f.k);
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-const round2 = v => Math.round(v * 100) / 100;
 
 const nfCache = {};
 function fmt(v, d = 0) {
@@ -274,9 +273,9 @@ $('list').addEventListener('input', ev => {
 
   e[k] = parseFloat(inp.value);
   const setField = (key, v) => { const el = card.querySelector(`[data-k="${key}"]`); if (el !== inp) el.value = v; };
-  // Связка: портов IVR = портов МИО × % дозвонов
-  if ((k === 'dz' || k === 'mio') && isFinite(e.mio) && isFinite(e.dz)) { e.ivr = Math.round(e.mio * e.dz / 100); setField('ivr', e.ivr); }
-  if (k === 'ivr' && isFinite(e.ivr) && e.mio > 0) { e.dz = round2(e.ivr / e.mio * 100); setField('dz', e.dz); }
+  // Связка портов МИО ⇄ портов IVR: IVR = МИО × % дозвонов; сам % дозвонов связку не трогает
+  if (k === 'mio' && isFinite(e.mio) && isFinite(e.dz)) { e.ivr = Math.round(e.mio * e.dz / 100); setField('ivr', e.ivr); }
+  if (k === 'ivr' && isFinite(e.ivr) && e.dz > 0) { e.mio = Math.round(e.ivr / (e.dz / 100)); setField('mio', e.mio); }
 
   card.querySelector('.res').innerHTML = resultHTML(e);
   save();
